@@ -70,6 +70,7 @@ Full walk-through: [docs/02-quickstart.md](docs/02-quickstart.md).
 5. [Transactions](docs/05-transactions.md) — what a signature covers, nonces, gas, finality
 6. [Verifying code](docs/06-verifying-code.md) — proving a deployed contract is the source you published
 7. [Security](docs/07-security.md) — keys, what the chain does and does not protect you from
+8. [Wire reference](docs/08-wire-reference.md) — the HTTP interface, the signed byte layout and the contract interface, for building in another language
 
 ## Testnet
 

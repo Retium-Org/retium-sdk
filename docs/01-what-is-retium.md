@@ -75,7 +75,7 @@ Every transaction pays a flat fee based on its weight, not on how long it runs:
 | 4 | | $0.25 |
 | 5 | contract deploy, heavy contract call | $0.50 |
 
-Fees are quoted in USD and charged in RTM at the network's reference price. You can add a priority fee, capped at 1 RTM; it is not part of what you sign.
+Fees are quoted in USD and charged in RTM at the network's reference price. 
 
 Inside a contract there is a second budget, **fuel**, which limits how much work one call may do. Running out of fuel fails the call — and the sender still pays the gas fee and uses the nonce. Keep loops bounded.
 
@@ -83,4 +83,4 @@ Inside a contract there is a second budget, **fuel**, which limits how much work
 
 A contract is a WebAssembly module with one entry point, `on_use`. The chain hands it a call (who is calling, which action, arguments, attached RTM), the contract does its work and returns JSON. Nothing in memory survives between calls: state lives in storage the chain keeps for you. A contract can hold and send its own RTM, but it can never reach into a caller's wallet.
 
-Next: [Quickstart](02-quickstart.md) · [RCP-1](03-rcp-1.md) · [Writing contracts](04-writing-contracts.md)
+Next: [Quickstart](02-quickstart.md) · [RCP-1](03-rcp-1.md) · [Writing contracts](04-writing-contracts.md) · [Wire reference](08-wire-reference.md)

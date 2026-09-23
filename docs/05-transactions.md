@@ -121,4 +121,4 @@ client.query(contract_id, "balance_of", &[user.to_string()]).await?;  // free
 
 This runs the contract read-only. No gas, no nonce, no waiting.
 
-Next: [Verifying code](06-verifying-code.md) · [Security](07-security.md)
+Next: [Verifying code](06-verifying-code.md) · [Security](07-security.md) · [Wire reference](08-wire-reference.md) if you are building outside Rust
