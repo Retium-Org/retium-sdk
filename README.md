@@ -48,7 +48,7 @@ retium balance                       # 0, until you fund it
 retium health                        # is the network up?
 ```
 
-Fund the account from the faucet, then deploy the example:
+Fund the account (see [retium.org](https://retium.org)), then deploy the example:
 
 ```bash
 cargo build --release --target wasm32-unknown-unknown -p hello_counter
@@ -77,7 +77,7 @@ The public test network exists for building and breaking things. **RTM on it has
 
 ## Contributing and reporting problems
 
-Issues and pull requests are welcome. For anything that looks like a security problem, please read [SECURITY.md](SECURITY.md) first and report it privately.
+Issues and pull requests are welcome. For anything that looks like a security problem, please read [SECURITY.md](SECURITY.md) first and report it privately rather than in an issue.
 
 ## Licence
 

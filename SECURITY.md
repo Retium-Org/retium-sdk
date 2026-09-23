@@ -4,9 +4,9 @@
 
 Please report security problems privately, not as a public issue.
 
-**security@retium.org**
+Use the contact route published at **[retium.org](https://retium.org)**.
 
-Include what you found, how to reproduce it, and what an attacker could do with it. We aim to acknowledge within three working days. Please give us reasonable time to fix an issue before publishing it.
+Include what you found, how to reproduce it, and what an attacker could do with it. Please give us reasonable time to fix an issue before publishing it.
 
 This covers the SDK in this repository and the Retium network it talks to.
 

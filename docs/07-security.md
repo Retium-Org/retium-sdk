@@ -53,4 +53,4 @@ RTM on the public test network has no value. Nobody should pay for it, and any "
 
 ## Reporting a problem
 
-Security problems in this SDK or the network: **security@retium.org**, privately. See [SECURITY.md](../SECURITY.md).
+Report security problems in this SDK or the network privately, through the contact route on [retium.org](https://retium.org). See [SECURITY.md](../SECURITY.md).

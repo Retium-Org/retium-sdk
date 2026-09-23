@@ -42,9 +42,9 @@ export RETIUM_KEY=my-wallet.sk       # Windows: setx RETIUM_KEY my-wallet.sk
 retium balance
 ```
 
-## 3. Get testnet RTM
+## 3. Fund the account
 
-Use the faucet on the Retium site with your address. Testnet RTM has no value; it exists so you can pay gas while you build.
+Every transaction costs gas, so the account needs RTM before it can do anything. How to get testnet RTM for an account is described on [retium.org](https://retium.org) — it has no value and exists only so you can pay gas while you build.
 
 ```bash
 retium balance
