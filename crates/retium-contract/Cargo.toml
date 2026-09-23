@@ -1,0 +1,23 @@
+[package]
+name = "retium-contract"
+description = "Write Retium smart contracts in Rust: storage, events, cross-contract calls and the on_use entry point"
+keywords = ["retium", "blockchain", "smart-contracts", "wasm", "rcp-1"]
+categories = ["cryptography::cryptocurrencies", "wasm", "no-std"]
+readme = "README.md"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+
+[lib]
+crate-type = ["rlib"]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+# Contracts are no_std wasm: they need an allocator of their own.
+dlmalloc = { version = "0.2", features = ["global"] }
+
+[package.metadata.docs.rs]
+targets = ["wasm32-unknown-unknown"]

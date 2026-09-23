@@ -1,0 +1,14 @@
+[package]
+name = "hello_counter"
+description = "A minimal Retium contract: the smallest thing that stores state and emits an event"
+publish = false
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+retium-contract.workspace = true

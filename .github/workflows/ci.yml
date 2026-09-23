@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  check:
+    name: format, lint, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Formatting
+        run: cargo fmt --all --check
+
+      - name: Lints
+        run: cargo clippy --workspace --all-targets
+
+      - name: Tests
+        run: cargo test --workspace
+
+      # The example must always build as a real contract, and stay small.
+      - name: Build the example contract
+        run: cargo build --release --target wasm32-unknown-unknown -p hello_counter
+
+      - name: Check the contract is deployable
+        run: |
+          wasm=target/wasm32-unknown-unknown/release/hello_counter.wasm
+          size=$(stat -c%s "$wasm")
+          echo "contract is $size bytes"
+          test "$size" -le 1048576
+
+  docs:
+    name: documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: Build the docs the way docs.rs does
+        run: |
+          cargo doc -p retium-sdk --no-deps
+          cargo doc -p retium-contract --no-deps --target wasm32-unknown-unknown
