@@ -41,6 +41,10 @@ jobs:
           echo "contract is $size bytes"
           test "$size" -le 1048576
 
+      # Host tests never go through the wasm entry point. This does.
+      - name: Run the example the way the runtime does
+        run: node examples/hello_counter/run-as-runtime.mjs
+
   docs:
     name: documentation
     runs-on: ubuntu-latest

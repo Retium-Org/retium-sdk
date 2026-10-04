@@ -220,9 +220,7 @@ pub fn __dispatch(
     input_len: i32,
     output_ptr: i32,
 ) -> i32 {
-    let input =
-        unsafe { core::slice::from_raw_parts(input_ptr as *const u8, input_len.max(0) as usize) };
-    let input = match core::str::from_utf8(input) {
+    let input = match String::from_utf8(read_input(input_ptr, input_len)) {
         Ok(s) => s,
         Err(_) => {
             return write_reply(
@@ -231,7 +229,7 @@ pub fn __dispatch(
             )
         }
     };
-    let reply = match Call::from_json(input) {
+    let reply = match Call::from_json(&input) {
         Ok(call) => handler(call),
         Err(e) => Err(e),
     };
@@ -243,6 +241,23 @@ pub fn __dispatch(
         ),
     };
     write_reply(output_ptr, &body)
+}
+
+/// Copy the call input out of the module's memory.
+///
+/// The runtime writes the input at offset 0, so `input_ptr` is 0. That is an
+/// ordinary wasm address, but Rust keeps address 0 to mean "no reference": a
+/// `&u8` pointing there reads as `None`. The bytes are therefore read through
+/// the raw pointer and copied, and no reference to them is ever formed.
+#[cfg(target_arch = "wasm32")]
+fn read_input(input_ptr: i32, input_len: i32) -> Vec<u8> {
+    let base = input_ptr as u32 as usize;
+    let len = input_len.max(0) as usize;
+    let mut input = Vec::with_capacity(len);
+    for offset in 0..len {
+        input.push(unsafe { core::ptr::read_volatile((base + offset) as *const u8) });
+    }
+    input
 }
 
 #[cfg(target_arch = "wasm32")]
