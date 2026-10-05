@@ -55,6 +55,9 @@ pub fn handle(call: Call) -> Reply {
 /// Record the first caller as the owner. Doing this in `init` rather than in a
 /// constant means the code can be published and deployed by anyone without
 /// handing control to whoever wrote it.
+///
+/// Until this has run once, anyone may call it. Send it straight after the
+/// deploy and read `owner` back before relying on the contract.
 pub fn init(call: &Call) -> Reply {
     if !storage::get_or(OWNER, "")?.is_empty() {
         return error("already initialised");

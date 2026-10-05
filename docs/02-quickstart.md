@@ -98,12 +98,15 @@ A deploy is weight 5, so it costs about $0.50 worth of RTM.
 
 ```bash
 retium call de6ea51a… init          # first caller becomes the owner
+retium query de6ea51a… owner        # must show your address
 retium call de6ea51a… bump 5        # add 5
 retium query de6ea51a… value        # free read, no transaction
 # {"ok":true,"data":"5"}
 ```
 
 `call` writes and costs gas. `query` reads and costs nothing — use it for anything that does not change state.
+
+Send `init` straight after the deploy. Until it has run once, anyone may call it, so the contract is yours only when `owner` shows your address. If it shows another, leave that contract and deploy again with a different `name` in a `--metadata` file, which gives a new contract id.
 
 ## 8. Prove what is deployed
 

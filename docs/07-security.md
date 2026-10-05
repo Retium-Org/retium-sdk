@@ -31,6 +31,7 @@ What the chain protects you from, what it does not, and the habits that keep you
 ## If you are writing a contract
 
 * Record the owner in `init`. Never hardcode an address — publish code that hands control to *its* deployer, not to you.
+* Send `init` straight after the deploy and read the owner back before you fund, use or announce the contract. Until `init` has run once, anyone may call it.
 * If ownership is meant to end, provide a way to renounce it, and use it.
 * Say plainly in your README what the owner can do. "The owner can mint" is a fact your users are entitled to.
 * Check before you write; use `fail` when you need the whole call undone.
