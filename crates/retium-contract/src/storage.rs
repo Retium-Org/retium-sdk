@@ -1,8 +1,9 @@
 //! Contract storage: the only place state survives between calls.
 //!
 //! Storage belongs to your contract; no other contract can write it. Keys are
-//! strings you choose, values are strings up to [`MAX_VALUE`](crate::MAX_VALUE)
-//! bytes. Writing an empty value deletes the key.
+//! strings you choose, values are strings up to [`MAX_VALUE`]
+//! bytes. Writing an empty value clears the key: it reads as not set from then
+//! on. Its name stays in the chain's key list, see [`keys_with_prefix`].
 //!
 //! Storage is permanent and costs fuel by size. Store what you need, not
 //! everything you have.
@@ -18,7 +19,10 @@ use crate::{Error, MAX_VALUE};
 /// Longest value a single read will return. Ask for more by chunking your keys.
 const READ_BUFFER: usize = MAX_VALUE;
 
-/// Store `value` under `key`. An empty value deletes the key.
+/// Room for the key list the chain returns for one prefix.
+const KEY_LIST_BUFFER: usize = MAX_VALUE;
+
+/// Store `value` under `key`. An empty value clears the key.
 pub fn set(key: &str, value: &str) -> Result<(), Error> {
     if key.is_empty() {
         return Err("storage key must not be empty".to_string());
@@ -105,17 +109,19 @@ pub fn sub_u128(key: &str, delta: u128) -> Result<u128, Error> {
     Ok(next)
 }
 
-/// Delete `key`.
+/// Clear `key`, so that it reads as not set.
 pub fn remove(key: &str) -> Result<(), Error> {
     set(key, "")
 }
 
-/// Keys that start with `prefix`, as the chain has them.
+/// Keys that start with `prefix`, as the chain has them, in order.
 ///
-/// Costs fuel per key returned — use narrow prefixes, and never assume the list
-/// is small.
+/// A key that was cleared is still listed, so read a key before relying on it.
+/// Costs fuel per key returned: use narrow prefixes, and never assume the list
+/// is small. A list too long to read in one go is an error, never a shorter
+/// list.
 pub fn keys_with_prefix(prefix: &str) -> Result<Vec<String>, Error> {
-    let mut buf = vec![0u8; crate::MAX_OUTPUT];
+    let mut buf = vec![0u8; KEY_LIST_BUFFER];
     let written = unsafe {
         host::list_keys(
             prefix.as_ptr(),
@@ -128,13 +134,21 @@ pub fn keys_with_prefix(prefix: &str) -> Result<Vec<String>, Error> {
         return Err(format!("could not list keys under '{prefix}'"));
     }
     buf.truncate(written as usize);
-    let text = String::from_utf8(buf).map_err(|_| "key list was not UTF-8".to_string())?;
+    read_key_list(buf, prefix)
+}
+
+/// Turn what the chain wrote into keys. The chain cuts its answer at the size
+/// of the buffer, and a cut list does not parse, so it is refused as a whole.
+fn read_key_list(raw: Vec<u8>, prefix: &str) -> Result<Vec<String>, Error> {
+    let too_long = || format!("too many keys under '{prefix}' to list; use a narrower prefix");
+    if raw.len() >= KEY_LIST_BUFFER {
+        return Err(too_long());
+    }
+    let text = String::from_utf8(raw).map_err(|_| too_long())?;
     if text.trim().is_empty() {
         return Ok(Vec::new());
     }
-    Ok(crate::json::Object::parse(&format!("{{\"keys\":{text}}}"))
-        .map(|o| o.string_array("keys"))
-        .unwrap_or_default())
+    crate::json::string_array(&text).map_err(|_| too_long())
 }
 
 #[cfg(test)]
@@ -152,6 +166,25 @@ mod tests {
         let big = "x".repeat(MAX_VALUE + 1);
         let err = set("k", &big).unwrap_err();
         assert!(err.contains("limit"), "{err}");
+    }
+
+    #[test]
+    fn a_key_list_cut_short_is_an_error_not_a_shorter_list() {
+        let read = |text: &str| read_key_list(text.as_bytes().to_vec(), "token:");
+        assert_eq!(
+            read(r#"["token:1","token:2"]"#).unwrap(),
+            ["token:1", "token:2"]
+        );
+        assert!(read("[]").unwrap().is_empty());
+        assert!(read("").unwrap().is_empty());
+        // What a full buffer leaves behind: the list stops in the middle.
+        let err = read(r#"["token:1","token:2","tok"#).unwrap_err();
+        assert!(err.contains("narrower prefix"), "{err}");
+        assert!(read(r#"["token:1","token:2""#).is_err());
+        // A list that exactly fills the buffer may have lost its tail.
+        let mut full = vec![b' '; KEY_LIST_BUFFER];
+        full[..2].copy_from_slice(b"[]");
+        assert!(read_key_list(full, "token:").is_err());
     }
 
     #[test]

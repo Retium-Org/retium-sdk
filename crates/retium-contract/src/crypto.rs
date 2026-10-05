@@ -90,6 +90,6 @@ mod tests {
         assert_eq!(from_hex("00FF").unwrap(), [0x00, 0xff]);
         assert!(from_hex("abc").is_err(), "odd length");
         assert!(from_hex("zz").is_err(), "not hex");
-        assert_eq!(from_hex("").unwrap(), []);
+        assert!(from_hex("").unwrap().is_empty());
     }
 }

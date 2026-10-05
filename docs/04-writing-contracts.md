@@ -146,7 +146,18 @@ let answer = call::contract(token_id, "balance_of", &[user])?;
 call::contract_with_value(pool_id, "deposit", &[], 1_000_000)?;
 ```
 
-If the other contract fails, its writes are undone and you get an error — your own writes are not undone unless you `fail` too. A contract cannot call itself, directly or in a circle.
+If the other contract traps or runs out of fuel, its writes are undone and you get an `Err`. Your own writes are not undone unless you `fail` too.
+
+A contract that answers with an error reply has not failed in that sense. It ran to the end, its writes stay, and you get its reply as `Ok`. Check it when the call must have worked:
+
+```rust
+let reply = call::contract(token_id, "transfer", &[to, &amount.to_string()])?;
+if call::is_error_reply(&reply) {
+    retium_contract::fail("token transfer was refused");
+}
+```
+
+A contract cannot call itself, directly or in a circle.
 
 ## Testing before you deploy
 

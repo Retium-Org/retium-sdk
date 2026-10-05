@@ -19,5 +19,10 @@ crate-type = ["rlib"]
 # Contracts are no_std wasm: they need an allocator of their own.
 dlmalloc = { version = "0.2", features = ["global"] }
 
+[dev-dependencies]
+# Host tests only: the node reads and writes call JSON with serde_json, so the
+# tests check this crate's own reader and writer against it.
+serde_json = "1.0"
+
 [package.metadata.docs.rs]
 targets = ["wasm32-unknown-unknown"]

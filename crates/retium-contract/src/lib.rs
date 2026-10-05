@@ -177,17 +177,20 @@ impl Call {
     /// chain.
     pub fn from_json(input: &str) -> Result<Self, Error> {
         let obj = json::Object::parse(input)?;
-        Ok(Self {
-            action: obj.string("action").unwrap_or_default(),
-            caller: obj.string("caller").unwrap_or_default(),
-            args: obj.string_array("args"),
-            token_context: obj.string("token_context"),
-            value: obj
-                .string("value")
-                .as_deref()
-                .unwrap_or("0")
+        let value = match obj.string("value")? {
+            None => 0,
+            Some(raw) => raw
                 .parse()
-                .unwrap_or(0),
+                .map_err(|_| format!("'value' must be a whole number, got '{raw}'"))?,
+        };
+        Ok(Self {
+            action: obj.string("action")?.unwrap_or_default(),
+            caller: obj.string("caller")?.unwrap_or_default(),
+            args: obj.strings("args")?,
+            // The node sends `null` here today. If it ever sends a shape this
+            // crate does not know, the call still runs and this reads as none.
+            token_context: obj.string("token_context").unwrap_or(None),
+            value,
         })
     }
 }
@@ -311,6 +314,34 @@ mod tests {
         let a =
             Call::from_json(r#"{"caller":"x","value":"7","action":"go","args":["1"]}"#).unwrap();
         assert_eq!((a.caller(), a.action(), a.value()), ("x", "go", 7));
+    }
+
+    #[test]
+    fn a_call_with_a_field_of_the_wrong_kind_is_refused() {
+        for bad in [
+            r#"{"action":"go","caller":42,"args":[],"value":"0"}"#,
+            r#"{"action":["go"],"caller":"a","args":[],"value":"0"}"#,
+            r#"{"action":"go","caller":"a","args":["1",2,"3"],"value":"0"}"#,
+            r#"{"action":"go","caller":"a","args":"1","value":"0"}"#,
+            r#"{"action":"go","caller":"a","args":[],"value":5}"#,
+            r#"{"action":"go","caller":"a","args":[],"value":"five"}"#,
+            r#"{"action":"go","caller":"a","args":[],"value":"-1"}"#,
+            r#"{"action":"go","caller":"a","args":[],"value":"0"} trailing"#,
+        ] {
+            assert!(Call::from_json(bad).is_err(), "{bad} should be refused");
+        }
+    }
+
+    #[test]
+    fn fields_the_crate_does_not_know_do_not_break_a_call() {
+        let input = r#"{"action":"go","caller":"a","args":["1"],"token_context":{"id":"t"},"value":"3","later":[1,{"x":"]"}]}"#;
+        let call = Call::from_json(input).unwrap();
+        assert_eq!((call.action(), call.caller(), call.value()), ("go", "a", 3));
+        assert_eq!(call.args(), ["1"]);
+        assert_eq!(call.token_context(), None);
+        // An older node sends no value at all.
+        let call = Call::from_json(r#"{"action":"go","caller":"a","args":[]}"#).unwrap();
+        assert_eq!(call.value(), 0);
     }
 
     #[test]

@@ -1096,6 +1096,7 @@ name = "retium-contract"
 version = "0.1.0"
 dependencies = [
  "dlmalloc",
+ "serde_json",
 ]
 
 [[package]]

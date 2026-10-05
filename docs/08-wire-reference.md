@@ -217,9 +217,9 @@ Imported from module `env`. Pointers are offsets into your memory; every length 
 
 | Function | Signature | Returns |
 |---|---|---|
-| `write_state` | `(key_ptr, key_len, val_ptr, val_len)` | — (empty value deletes; traps over 64 KiB) |
+| `write_state` | `(key_ptr, key_len, val_ptr, val_len)` | — (an empty value makes the key read as not found; traps over 64 KiB) |
 | `read_state` | `(key_ptr, key_len, out_ptr, out_max) -> i32` | bytes written, `0` not found, `-1` error |
-| `list_keys` | `(prefix_ptr, prefix_len, out_ptr, out_max) -> i32` | bytes of a JSON array of keys |
+| `list_keys` | `(prefix_ptr, prefix_len, out_ptr, out_max) -> i32` | bytes of a JSON array of keys, cut off at `out_max`; a key written empty is still listed |
 | `emit_event` | `(type_ptr, type_len, data_ptr, data_len) -> i32` | `0` / `-1`; type ≤ 64 B, data ≤ 4 KiB |
 | `get_self_contract_id` | `(out_ptr, out_max) -> i32` | bytes written |
 | `get_block_height` | `() -> i64` | block id |
@@ -233,7 +233,7 @@ Imported from module `env`. Pointers are offsets into your memory; every length 
 | `set_contract_version` | `(ver_ptr, ver_len) -> i32` | `0` / `-1`; ≤ 64 bytes |
 | `supports_capability` | `(id_ptr, id_len, cap_ptr, cap_len) -> i32` | `1` / `0` / `-1` — a claim, not a guarantee |
 
-There is no clock, no randomness, no network and no file access. `args` are strings; a call's arguments arrive comma-joined when passed on to another contract.
+There is no clock, no randomness, no network and no file access. `args` are strings. `call_contract` and `call_contract_value` take them as a JSON array of strings, for example `["rete…","10"]`, and answer `-1` for anything else. The contract you call receives them in its own `args`.
 
 ### Execution rules
 
