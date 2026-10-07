@@ -39,7 +39,7 @@ The signed message is `blake3(bincode(payload))`, and the payload is:
 
 | # | Field | Type |
 |---|---|---|
-| 1 | `version` | `u8` — currently `4` |
+| 1 | `version` | `u8` — currently `5` |
 | 2 | `chain_id` | `u32` — 1 mainnet, 2 testnet, 3 devnet |
 | 3 | `action` | string — `transfer`, `deploy`, `call`, `stake`, `unstake` |
 | 4 | `sender` | string — your address |
@@ -50,6 +50,7 @@ The signed message is `blake3(bincode(payload))`, and the payload is:
 | 9 | `method` | string — contract method for `call`, else empty |
 | 10 | `args_hash` | 32 bytes — `blake3(args)` for `call`, else all zeros |
 | 11 | `declared` | list of strings — see below |
+| 12 | `fee_currency` | `u8` — the coin the gas is paid in: `0` RTM, `1` RTD (Retium Dollar, 1.5x the RTM fee) |
 
 ### Encoding
 
@@ -63,7 +64,7 @@ Bincode with fixed-width integers, little-endian:
 A `transfer` of 1 RTM, nonce 0, therefore begins:
 
 ```
-04                          version 4
+05                          version 5
 03 00 00 00                 chain_id 3
 08 00 00 00 00 00 00 00     "transfer" is 8 bytes
 74 72 61 6e 73 66 65 72     "transfer"
@@ -77,6 +78,7 @@ A `transfer` of 1 RTM, nonce 0, therefore begins:
 00 ×32                      args_hash
 03 00 00 00 00 00 00 00     declared has 3 entries
 …                           each: u64 length + bytes
+00                          fee_currency 0 (RTM)
 ```
 
 ### `declared`
@@ -125,6 +127,7 @@ All writes are `POST`, JSON in and JSON out. Common fields:
 | `nonce` | number | must equal the account's next nonce |
 | `sender_balance_claim` | string | atomic units |
 | `declared` | array of strings | as above |
+| `fee_currency` | string | `"RTM"` (default when absent) or `"RTD"`; must match the signed byte |
 | `signature` | string | hex, 4,842 characters |
 | `public_key` | string | hex; required on an account's first transaction, harmless afterwards |
 | `priority_fee` | number | optional, RTM, capped at 1.0, **not signed** |

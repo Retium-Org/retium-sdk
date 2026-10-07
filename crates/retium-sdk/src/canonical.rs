@@ -19,8 +19,14 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Payload version. v4 came with the 2026 post-quantum migration.
-pub const VERSION: u8 = 4;
+/// Payload version. v4 came with the 2026 post-quantum migration; v5 added
+/// [`CanonicalPayload::fee_currency`], the coin the gas is paid in.
+pub const VERSION: u8 = 5;
+
+/// Gas paid in RTM (the default).
+pub const FEE_RTM: u8 = 0;
+/// Gas paid in RTD, Retium Dollar, at 1.5x the RTM fee.
+pub const FEE_RTD: u8 = 1;
 
 /// Chain identifiers. The chain id is signed, so a transaction made for one
 /// network can never be replayed on another.
@@ -85,6 +91,9 @@ pub struct CanonicalPayload {
     pub args_hash: [u8; 32],
     /// Accounts this transaction may write to, sorted and de-duplicated.
     pub declared: Vec<String>,
+    /// The coin the gas is paid in: [`FEE_RTM`] or [`FEE_RTD`]. Signed, so a
+    /// relay cannot change it.
+    pub fee_currency: u8,
 }
 
 impl CanonicalPayload {
@@ -114,7 +123,19 @@ impl CanonicalPayload {
             method,
             args_hash,
             declared: normalize(declared),
+            fee_currency: FEE_RTM,
         }
+    }
+
+    /// Pay the gas in RTD instead of RTM ([`FEE_RTD`]), or back ([`FEE_RTM`]).
+    pub fn with_fee_currency(mut self, fee_currency: u8) -> Self {
+        self.fee_currency = fee_currency;
+        self
+    }
+
+    /// The fee coin as the request body names it: "RTM" or "RTD".
+    pub fn fee_currency_name(&self) -> &'static str {
+        if self.fee_currency == FEE_RTD { "RTD" } else { "RTM" }
     }
 
     /// Send RTM to another wallet.

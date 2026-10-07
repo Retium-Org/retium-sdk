@@ -88,6 +88,7 @@ pub async fn transfer_with(
         "nonce": ctx.nonce,
         "sender_balance_claim": ctx.balance_claim.to_string(),
         "declared": payload.declared,
+        "fee_currency": payload.fee_currency_name(),
         "signature": key.sign_hex(&payload.signing_hash()),
         "public_key": key.public_key().to_hex(),
     });
@@ -130,6 +131,7 @@ pub async fn deploy_with(
         "nonce": ctx.nonce,
         "sender_balance_claim": ctx.balance_claim.to_string(),
         "declared": payload.declared,
+        "fee_currency": payload.fee_currency_name(),
         "signature": key.sign_hex(&payload.signing_hash()),
         "public_key": key.public_key().to_hex(),
     });
@@ -205,6 +207,7 @@ pub async fn call_with(
         "nonce": ctx.nonce,
         "sender_balance_claim": ctx.balance_claim.to_string(),
         "declared": payload.declared,
+        "fee_currency": payload.fee_currency_name(),
         "signature": key.sign_hex(&payload.signing_hash()),
         "public_key": key.public_key().to_hex(),
     });
@@ -250,6 +253,7 @@ async fn stake_inner(
         "nonce": ctx.nonce,
         "sender_balance_claim": ctx.balance_claim.to_string(),
         "declared": payload.declared,
+        "fee_currency": payload.fee_currency_name(),
         "signature": key.sign_hex(&payload.signing_hash()),
         "public_key": key.public_key().to_hex(),
     });
