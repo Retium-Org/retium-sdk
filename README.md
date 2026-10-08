@@ -17,6 +17,8 @@ let sent = tx::transfer(&client, &key, "rete...", "1.5").await?;
 client.wait_for_final(&sent.tx_id, std::time::Duration::from_secs(120)).await?;
 ```
 
+Building with an AI agent? Point it at [SKILL.md](SKILL.md). It explains every common task with exact commands.
+
 ## What is in here
 
 | Crate / folder | What it is |

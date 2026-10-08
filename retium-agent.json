@@ -1,0 +1,49 @@
+{
+  "name": "Retium",
+  "network": "public testnet",
+  "coins_have_value": false,
+  "instructions": "SKILL.md",
+  "rpc": "https://rpc.retium.org",
+  "chain_id_in_signatures": 3,
+  "signature_scheme": "ML-DSA-44 (FIPS 204)",
+  "signer": "retium command-line tool from the Retium SDK, signs locally",
+  "address": {
+    "prefix": "rete",
+    "length": 72,
+    "form": "rete + hex(blake3(public key)) + hex(first 2 bytes of blake3(\"retium.addr.v1\" + hash))"
+  },
+  "coins": [
+    { "symbol": "RTM", "kind": "native", "decimals": 18 },
+    { "symbol": "RTD", "kind": "token", "name": "Retium Dollar", "decimals": 18, "pays_gas": true, "gas_multiplier": 1.5 }
+  ],
+  "gas_usd_by_weight": { "1": 0.01, "2": 0.05, "3": 0.10, "4": 0.25, "5": 0.50 },
+  "fixed_weight_methods": {
+    "1": ["transfer", "transfer_from", "approve", "allowance", "balance_of", "name", "symbol", "decimals", "total_supply"],
+    "2": ["mint", "burn"]
+  },
+  "deploy_weight": 5,
+  "finality_states": ["Pending", "SoftFinal", "HardFinal", "Rejected", "Voided"],
+  "settled_state": "HardFinal",
+  "api_key": {
+    "needed_for": "every POST",
+    "header": "X-API-Key",
+    "prefix": "rk_",
+    "create_first_key": "https://retium.net/api-keys",
+    "free_tier": { "per_day": 100000, "per_sec": 5 }
+  },
+  "limits": {
+    "contract_bytes": 1048576,
+    "reply_bytes": 4096,
+    "storage_key_bytes": 1024,
+    "storage_value_bytes": 65536,
+    "deploy_metadata_bytes": 8192,
+    "call_depth": 64,
+    "fuel_per_transaction": 100000000
+  },
+  "call_argument_rules": "plain text, none may contain , ( ) or ::",
+  "links": {
+    "explorer": "https://retium.net",
+    "wallet": "https://wallet.retium.org",
+    "funding": "https://retium.money"
+  }
+}

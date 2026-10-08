@@ -1,0 +1,23 @@
+# Retium SDK
+
+> Rust SDK and command-line tool for the Retium blockchain, a post-quantum chain (ML-DSA-44 signatures) with a public testnet at https://rpc.retium.org. AI agents should read SKILL.md first. It explains every common task with exact commands.
+
+## Start here
+
+- [SKILL.md](SKILL.md): how an agent works with Retium, from setup to deploy, with error handling
+- [README](README.md): install and getting started for people
+- [retium-agent.json](retium-agent.json): the network's facts in one JSON file (endpoint, chain id, fees, limits)
+
+## Docs
+
+- [What Retium is](docs/01-what-is-retium.md): accounts, coins, finality, gas
+- [Quickstart](docs/02-quickstart.md): account to deployed contract
+- [RCP-1](docs/03-rcp-1.md): contract identity, metadata and weight
+- [Writing contracts](docs/04-writing-contracts.md): the contract model and its rules
+- [Transactions](docs/05-transactions.md): what is signed, nonces, gas, results
+- [Verifying code](docs/06-verifying-code.md): proving a contract runs published source
+- [Security](docs/07-security.md): keys and what the chain does and does not guarantee
+- [Wire reference](docs/08-wire-reference.md): HTTP interface and signed byte layout, for other languages
+- [Tokens](docs/09-tokens.md): what wallets expect from a fungible token
+- [Connecting a wallet](docs/10-connecting-a-wallet.md): signing from a web page
+- [Errors](docs/11-errors.md): messages and what to do

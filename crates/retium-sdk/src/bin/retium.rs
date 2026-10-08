@@ -76,7 +76,8 @@ enum Command {
         /// Path to a JSON file of deploy metadata (name, symbol and so on).
         #[arg(long)]
         metadata: Option<PathBuf>,
-        /// Print the contract id and stop.
+        /// Run every check the chain runs on a deploy, print the contract id
+        /// and the record the chain would store, and stop without sending.
         #[arg(long)]
         dry_run: bool,
     },
