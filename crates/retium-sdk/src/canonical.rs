@@ -66,8 +66,6 @@ impl ChainId {
 
 /// The ledger account that collects gas.
 pub const TREASURY: &str = "rete_treasury";
-/// Recipient written into a stake or unstake payload.
-pub const STAKE_POOL: &str = "STAKE_POOL";
 /// Recipient written into an API key payload.
 pub const API_KEY_REGISTRY: &str = "API_KEY_REGISTRY";
 
@@ -79,7 +77,7 @@ pub struct CanonicalPayload {
     pub version: u8,
     /// Which network this is for.
     pub chain_id: u32,
-    /// `transfer`, `deploy`, `call`, `stake`, `unstake` and so on.
+    /// `transfer`, `deploy`, `call`, `api_key` and so on.
     pub action: String,
     /// Your address.
     pub sender: String,
@@ -210,36 +208,6 @@ impl CanonicalPayload {
             method.to_string(),
             *blake3::hash(args.as_bytes()).as_bytes(),
             Vec::new(),
-        )
-    }
-
-    /// Lock RTM as stake (it becomes PIE).
-    pub fn stake(sender: &str, amount: u128, nonce: u64, balance_claim: u128) -> Self {
-        Self::new(
-            "stake",
-            sender,
-            STAKE_POOL,
-            amount,
-            nonce,
-            balance_claim,
-            String::new(),
-            [0u8; 32],
-            vec![sender.into(), TREASURY.into()],
-        )
-    }
-
-    /// Release stake back to RTM.
-    pub fn unstake(sender: &str, amount: u128, nonce: u64, balance_claim: u128) -> Self {
-        Self::new(
-            "unstake",
-            sender,
-            STAKE_POOL,
-            amount,
-            nonce,
-            balance_claim,
-            String::new(),
-            [0u8; 32],
-            vec![sender.into(), TREASURY.into()],
         )
     }
 
