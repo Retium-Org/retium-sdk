@@ -259,19 +259,34 @@ fn run(cli: Cli) -> retium_sdk::Result<String> {
                         &serde_json::json!({"address": address, "known": false}),
                         &format!("{address}\n  the chain has no record of this account yet"),
                     )),
-                    Some(w) => Ok(out(
-                        cli.json,
-                        &serde_json::json!({
-                            "address": w.address,
-                            "balance_rtm": w.balance_rtm,
-                            "staked_pie": w.balance_pie,
-                            "next_nonce": w.nonce,
-                        }),
-                        &format!(
-                            "{}\n  balance    {} RTM\n  staked     {} PIE\n  next nonce {}",
-                            w.address, w.balance_rtm, w.balance_pie, w.nonce
-                        ),
-                    )),
+                    Some(w) => {
+                        let tokens = client.tokens(&address).await?;
+                        let mut text = format!("{}\n  balance    {} RTM", w.address, w.balance_rtm);
+                        for t in &tokens {
+                            text.push_str(&format!("\n             {} {}", t.display(), t.symbol));
+                        }
+                        text.push_str(&format!(
+                            "\n  staked     {} PIE\n  next nonce {}",
+                            w.balance_pie, w.nonce
+                        ));
+                        let rows: Vec<_> = tokens
+                            .iter()
+                            .map(|t| {
+                                serde_json::json!({"contract_id": t.contract_id, "symbol": t.symbol, "balance": t.display()})
+                            })
+                            .collect();
+                        Ok(out(
+                            cli.json,
+                            &serde_json::json!({
+                                "address": w.address,
+                                "balance_rtm": w.balance_rtm,
+                                "tokens": rows,
+                                "staked_pie": w.balance_pie,
+                                "next_nonce": w.nonce,
+                            }),
+                            &text,
+                        ))
+                    }
                 }
             }
 

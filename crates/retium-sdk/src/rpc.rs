@@ -68,6 +68,45 @@ fn number_or_text<'de, D: serde::Deserializer<'de>>(
     })
 }
 
+/// A token an account holds.
+#[derive(Deserialize, Debug, Clone)]
+pub struct TokenBalance {
+    /// The token contract.
+    pub contract_id: String,
+    /// The token's symbol, for example `RTD`. Declared by whoever deployed
+    /// it, so identify tokens by `contract_id`.
+    #[serde(default)]
+    pub symbol: String,
+    /// Decimal places.
+    #[serde(default)]
+    pub decimals: u32,
+    /// Balance in the token's smallest unit.
+    pub balance: String,
+}
+
+impl TokenBalance {
+    /// The balance as a decimal string, trailing zeros trimmed.
+    pub fn display(&self) -> String {
+        let raw = self.balance.trim_start_matches('0');
+        let d = self.decimals as usize;
+        if d == 0 {
+            return if raw.is_empty() {
+                "0".into()
+            } else {
+                raw.into()
+            };
+        }
+        let padded = format!("{raw:0>width$}", width = d + 1);
+        let (whole, frac) = padded.split_at(padded.len() - d);
+        let frac = frac.trim_end_matches('0');
+        if frac.is_empty() {
+            whole.to_string()
+        } else {
+            format!("{whole}.{frac}")
+        }
+    }
+}
+
 /// One row of the API key price list.
 #[derive(Deserialize, Debug, Clone)]
 pub struct ApiTier {
@@ -272,6 +311,20 @@ impl Client {
             return Err(Error::InvalidAddress(address.to_string()));
         }
         self.get(&format!("/api/wallet/{address}")).await
+    }
+
+    /// The tokens an account holds, RTD included.
+    pub async fn tokens(&self, address: &str) -> Result<Vec<TokenBalance>> {
+        if !crate::address::is_valid(address) {
+            return Err(Error::InvalidAddress(address.to_string()));
+        }
+        #[derive(Deserialize)]
+        struct Tokens {
+            #[serde(default)]
+            tokens: Vec<TokenBalance>,
+        }
+        let t: Option<Tokens> = self.get(&format!("/api/wallet/{address}/tokens")).await?;
+        Ok(t.map(|t| t.tokens).unwrap_or_default())
     }
 
     /// The next nonce for an account (0 for one the chain has not seen).
@@ -548,6 +601,24 @@ mod tests {
     fn the_endpoint_never_keeps_a_trailing_slash() {
         let c = Client::new("https://rpc.retium.org/").unwrap();
         assert_eq!(c.endpoint(), "https://rpc.retium.org");
+    }
+
+    #[test]
+    fn token_balances_print_as_decimals() {
+        let t = |b: &str, d: u32| {
+            TokenBalance {
+                contract_id: String::new(),
+                symbol: "RTD".into(),
+                decimals: d,
+                balance: b.into(),
+            }
+            .display()
+        };
+        assert_eq!(t("8485000000000000000", 18), "8.485");
+        assert_eq!(t("10000000000000000000", 18), "10");
+        assert_eq!(t("5", 18), "0.000000000000000005");
+        assert_eq!(t("0", 18), "0");
+        assert_eq!(t("42", 0), "42");
     }
 
     #[test]
