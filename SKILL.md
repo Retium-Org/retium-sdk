@@ -88,7 +88,7 @@ retium api-key revoke <key hash>
 | Want | Command |
 |---|---|
 | network up, current tick | `retium health` |
-| balance, tokens, next nonce | `retium balance [address]` (the `staked ... PIE` line is validator stake, ignore it) |
+| balance, tokens, next nonce | `retium balance [address]` |
 | one transaction's state and result | `retium tx <tx_id>` |
 | a contract's record and code hash | `retium contract <contract_id>` |
 | call a read-only contract method | `retium query <contract_id> <method> [args...]` |

@@ -66,7 +66,6 @@ retium balance
 # rete4928...
 #   balance    25 RTM
 #              10 RTD
-#   staked     0 PIE
 #   next nonce 0
 ```
 

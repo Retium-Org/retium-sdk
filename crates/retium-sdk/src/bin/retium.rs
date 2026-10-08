@@ -266,10 +266,7 @@ fn run(cli: Cli) -> retium_sdk::Result<String> {
                         for t in &tokens {
                             text.push_str(&format!("\n             {} {}", t.display(), t.symbol));
                         }
-                        text.push_str(&format!(
-                            "\n  staked     {} PIE\n  next nonce {}",
-                            w.balance_pie, w.nonce
-                        ));
+                        text.push_str(&format!("\n  next nonce {}", w.nonce));
                         let rows: Vec<_> = tokens
                             .iter()
                             .map(|t| {
@@ -282,7 +279,6 @@ fn run(cli: Cli) -> retium_sdk::Result<String> {
                                 "address": w.address,
                                 "balance_rtm": w.balance_rtm,
                                 "tokens": rows,
-                                "staked_pie": w.balance_pie,
                                 "next_nonce": w.nonce,
                             }),
                             &text,
