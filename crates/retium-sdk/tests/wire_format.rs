@@ -2,7 +2,7 @@
 //!
 //! `docs/08-wire-reference.md` tells other languages how to build the bytes a
 //! Retium signature covers. This test builds them by hand from that description
-//! and checks the SDK agrees — so the page cannot drift away from the code.
+//! and checks the SDK agrees, so the page cannot drift away from the code.
 
 use retium_sdk::canonical::{CanonicalPayload, ChainId};
 
@@ -100,10 +100,21 @@ fn every_chain_id_changes_the_signed_bytes() {
 fn transfers_match_the_node_v5_vectors() {
     let sender = format!("rete72bf{}a5ad", "00".repeat(30));
     let to = format!("rete11aa{}b6be", "00".repeat(30));
-    let p = CanonicalPayload::transfer(&sender, &to, 1_000_000_000_000_000_000, 7, 500_000_000_000_000_000_000);
+    let p = CanonicalPayload::transfer(
+        &sender,
+        &to,
+        1_000_000_000_000_000_000,
+        7,
+        500_000_000_000_000_000_000,
+    );
     let hex = |h: [u8; 32]| h.iter().map(|b| format!("{:02x}", b)).collect::<String>();
-    assert_eq!(hex(p.signing_hash()), "7d87a786c4d7dc516561dacd26af822b72bdf14f2b03d89b5f2297c7a8c87c15");
+    assert_eq!(
+        hex(p.signing_hash()),
+        "7d87a786c4d7dc516561dacd26af822b72bdf14f2b03d89b5f2297c7a8c87c15"
+    );
     let p = p.with_fee_currency(retium_sdk::canonical::FEE_RTD);
-    assert_eq!(hex(p.signing_hash()), "1266cbfaca9639e4ae6e37782ec8f2684bbd1eab8cf7e587f532d90bbc22db19");
+    assert_eq!(
+        hex(p.signing_hash()),
+        "1266cbfaca9639e4ae6e37782ec8f2684bbd1eab8cf7e587f532d90bbc22db19"
+    );
 }
-

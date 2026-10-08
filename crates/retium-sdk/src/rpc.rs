@@ -4,7 +4,7 @@
 //! directly, and you never need one of your own to build on Retium.
 //!
 //! Reads are open. Writes need an API key header on the public endpoint; a key
-//! only raises your rate limit, it grants no authority — authority comes from
+//! only raises your rate limit, it grants no authority; authority comes from
 //! your signature.
 
 use std::time::Duration;
@@ -34,7 +34,7 @@ pub struct Wallet {
 }
 
 impl Wallet {
-    /// Confirmed balance in atomic units — what a transaction's balance claim
+    /// Confirmed balance in atomic units: what a transaction's balance claim
     /// needs.
     pub fn balance_atomic(&self) -> Result<u128> {
         amount::parse_rtm(&self.balance_rtm)
@@ -44,7 +44,7 @@ impl Wallet {
 /// What the node says about a submitted transaction.
 #[derive(Deserialize, Debug, Clone)]
 pub struct Submitted {
-    /// The transaction's id — look it up to follow its progress.
+    /// The transaction's id; look it up to follow its progress.
     pub tx_id: String,
     /// The node's own word for what it did with it.
     #[serde(default)]
@@ -91,7 +91,7 @@ impl Finality {
 pub struct ContractInfo {
     /// The contract's id.
     pub contract_id: String,
-    /// blake3 of the deployed wasm — compare this with your own build.
+    /// blake3 of the deployed wasm; compare this with your own build.
     #[serde(default)]
     pub code_hash: Option<String>,
     /// The RCP-1 metadata the deployer declared.
@@ -157,10 +157,7 @@ impl Client {
             .await
             .map_err(|e| Error::Transport(e.to_string()))?;
         if !status.is_success() {
-            return Err(Error::Node {
-                status: status.as_u16(),
-                body: first_line(&body),
-            });
+            return Err(error_for(status.as_u16(), &body));
         }
         serde_json::from_str(&body)
             .map(Some)
@@ -185,19 +182,7 @@ impl Client {
             return serde_json::from_str(&text)
                 .map_err(|e| Error::Unexpected(format!("{e} in: {}", first_line(&text))));
         }
-        let message = serde_json::from_str::<serde_json::Value>(&text)
-            .ok()
-            .and_then(|v| v.get("error").and_then(|e| e.as_str()).map(str::to_string))
-            .unwrap_or_else(|| first_line(&text));
-        match status.as_u16() {
-            // The node is mid-handover or has no open block right now.
-            503 => Err(Error::Busy(message)),
-            400 | 401 | 403 | 409 | 413 | 422 => Err(Error::Refused(message)),
-            code => Err(Error::Node {
-                status: code,
-                body: message,
-            }),
-        }
+        Err(error_for(status.as_u16(), &text))
     }
 
     /// A wallet, or `None` if the chain has never seen it.
@@ -220,6 +205,7 @@ impl Client {
             #[serde(default)]
             finality: Option<String>,
         }
+        crate::contract::check_path_segment("transaction", tx_id)?;
         let tx: Option<Tx> = self.get(&format!("/api/transaction/{tx_id}")).await?;
         Ok(tx
             .and_then(|t| t.finality)
@@ -249,25 +235,57 @@ impl Client {
 
     /// A deployed contract's record, or `None` if there is no such contract.
     pub async fn contract(&self, contract_id: &str) -> Result<Option<ContractInfo>> {
+        crate::contract::check_path_segment("contract", contract_id)?;
         self.get(&format!("/api/contract/{contract_id}")).await
     }
 
-    /// Read a contract without sending a transaction: no gas, no state change.
+    /// Read a contract without sending a transaction: no gas, no state change,
+    /// no API key.
+    ///
+    /// The read endpoint takes the method and arguments in the URL and does
+    /// not decode them, so they are limited to letters, digits and
+    /// `- _ . ~ :` (see [`crate::contract::check_query`]). Addresses, ids and
+    /// numbers all fit. For anything else use [`Client::view`].
     pub async fn query(
         &self,
         contract_id: &str,
         method: &str,
         args: &[String],
     ) -> Result<serde_json::Value> {
-        let args = args.join(",");
+        crate::contract::check_path_segment("contract", contract_id)?;
+        crate::contract::check_query(method, args)?;
         let path = format!(
-            "/api/contract/{contract_id}/query?method={}&args={}",
-            urlencode(method),
-            urlencode(&args)
+            "/api/contract/{contract_id}/query?method={method}&args={}",
+            args.join(",")
         );
         self.get(&path)
             .await?
-            .ok_or_else(|| Error::Refused(format!("no contract {contract_id}")))
+            .ok_or_else(|| Error::Invalid(format!("no contract {contract_id}")))
+    }
+
+    /// The same free read as [`Client::query`], sent as JSON, so arguments may
+    /// hold any text that [`crate::contract::check_call`] allows.
+    ///
+    /// It is a POST, and the public endpoint asks for an API key on every POST:
+    /// build the client with [`ClientBuilder::api_key`].
+    pub async fn view(
+        &self,
+        contract_id: &str,
+        method: &str,
+        args: &[String],
+    ) -> Result<serde_json::Value> {
+        crate::contract::check_path_segment("contract", contract_id)?;
+        crate::contract::check_call(method, args)?;
+        let body = serde_json::json!({
+            "contract_id": contract_id,
+            "method": method,
+            "args": args,
+            "view": true,
+            // The endpoint reads a nonce before it looks at `view`; a view
+            // signs nothing and uses none.
+            "nonce": 0,
+        });
+        self.post("/api/contract/call", &body).await
     }
 
     /// The network's health.
@@ -325,6 +343,23 @@ impl ClientBuilder {
     }
 }
 
+/// One rule for every refusal the node sends back.
+fn error_for(status: u16, body: &str) -> Error {
+    let message = serde_json::from_str::<serde_json::Value>(body)
+        .ok()
+        .and_then(|v| v.get("error").and_then(|e| e.as_str()).map(str::to_string))
+        .unwrap_or_else(|| first_line(body));
+    match status {
+        // Mid-handover, no open block right now, or over the rate limit.
+        429 | 503 => Error::Busy(message),
+        400 | 401 | 403 | 409 | 413 | 422 => Error::Refused(message),
+        code => Error::Node {
+            status: code,
+            body: message,
+        },
+    }
+}
+
 fn first_line(s: &str) -> String {
     let line = s.lines().next().unwrap_or("").trim();
     if line.len() > 300 {
@@ -332,19 +367,6 @@ fn first_line(s: &str) -> String {
     } else {
         line.to_string()
     }
-}
-
-fn urlencode(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    for b in s.bytes() {
-        match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                out.push(b as char)
-            }
-            _ => out.push_str(&format!("%{b:02X}")),
-        }
-    }
-    out
 }
 
 #[cfg(test)]
@@ -362,9 +384,12 @@ mod tests {
     }
 
     #[test]
-    fn query_arguments_are_escaped() {
-        assert_eq!(urlencode("balance_of"), "balance_of");
-        assert_eq!(urlencode("a b&c=d"), "a%20b%26c%3Dd");
+    fn busy_and_rate_limited_are_worth_retrying_and_refusals_are_not() {
+        assert!(error_for(503, r#"{"error":"tx_not_delivered"}"#).is_retryable());
+        assert!(error_for(429, "slow down").is_retryable());
+        let refused = error_for(400, r#"{"error":"Nonce mismatch: got 1 but expected 2"}"#);
+        assert!(!refused.is_retryable());
+        assert!(refused.to_string().contains("Nonce mismatch"), "{refused}");
     }
 
     #[test]

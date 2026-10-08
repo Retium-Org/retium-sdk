@@ -40,7 +40,7 @@ pub fn from_public_key(key: &PublicKey) -> String {
     from_hash(blake3::hash(key.as_bytes()).as_bytes())
 }
 
-/// Is `s` a well-formed Retium address — right length and prefix, lowercase
+/// Is `s` a well-formed Retium address: right length and prefix, lowercase
 /// hex, checksum intact? Check every address a user typed or pasted before you
 /// put it in a transaction.
 pub fn is_valid(s: &str) -> bool {

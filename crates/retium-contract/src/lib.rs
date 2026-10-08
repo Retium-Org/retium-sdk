@@ -94,7 +94,7 @@ pub fn ok(data: &str) -> Reply {
 /// A failed reply carrying `message`.
 ///
 /// The call still counts as executed and the sender still pays gas, so any
-/// state written before this point stays written. Check first, write second —
+/// state written before this point stays written. Check first, write second:
 /// or use [`fail`] to undo the whole call.
 pub fn error(message: &str) -> Reply {
     Err(message.to_string())
@@ -212,6 +212,45 @@ macro_rules! entrypoint {
             $crate::__dispatch($handler, input_ptr, input_len, output_ptr)
         }
     };
+}
+
+/// Embed your contract's RCP-1 metadata in the wasm.
+///
+/// The chain reads it at deploy and shows it to wallets and explorers. Give
+/// all seven fields, as JSON; the chain refuses the deploy if one is missing:
+///
+/// ```ignore
+/// retium_contract::rcp_metadata!(r#"{"rcp_type":"counter","traits":["demo"],
+///     "capabilities":["execute"],"lockable_fields":[],"evolves_from":"",
+///     "weight":5,"version":"v1.0.0"}"#);
+/// ```
+///
+/// `weight` must fit the chain's analysis of your code; for a Rust contract
+/// that is 5. `retium deploy --dry-run` checks all of it before you pay gas.
+#[macro_export]
+macro_rules! rcp_metadata {
+    ($json:literal) => {
+        #[cfg(target_arch = "wasm32")]
+        const __RCP_METADATA_TEXT: &str = concat!("RCP_METADATA:", $json, "\0");
+        /// RCP-1 metadata, read by the chain at deploy.
+        #[cfg(target_arch = "wasm32")]
+        #[no_mangle]
+        pub static RCP_METADATA: [u8; __RCP_METADATA_TEXT.len()] =
+            $crate::__text_bytes(__RCP_METADATA_TEXT);
+    };
+}
+
+/// Machinery behind [`rcp_metadata!`]. Not part of the stable surface.
+#[doc(hidden)]
+pub const fn __text_bytes<const N: usize>(text: &str) -> [u8; N] {
+    let bytes = text.as_bytes();
+    let mut out = [0u8; N];
+    let mut i = 0;
+    while i < N {
+        out[i] = bytes[i];
+        i += 1;
+    }
+    out
 }
 
 /// Machinery behind [`entrypoint!`]. Not part of the stable surface.

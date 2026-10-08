@@ -87,7 +87,7 @@ pub fn rtm_balance_of(address: &str) -> Result<u128, Error> {
 /// Send RTM from this contract to `to`.
 ///
 /// A contract can only ever move its own RTM. There is no way to take RTM from
-/// the caller's wallet — what they attach to a call is all you get.
+/// the caller's wallet: what they attach to a call is all you get.
 pub fn send_rtm(to: &str, amount: u128) -> Result<String, Error> {
     contract(RTM, "transfer", &[to, &amount.to_string()])
 }

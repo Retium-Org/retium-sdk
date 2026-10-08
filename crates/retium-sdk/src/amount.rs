@@ -1,7 +1,7 @@
 //! RTM amounts.
 //!
 //! One RTM is 10^18 atomic units. Everything signed and everything sent over
-//! the wire is in atomic units, as a decimal string — never a float, which
+//! the wire is in atomic units, as a decimal string, never a float, which
 //! could not represent these values exactly.
 
 use crate::error::{Error, Result};

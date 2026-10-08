@@ -1,4 +1,4 @@
-//! Keys and signatures — ML-DSA-44 (FIPS 204), the only scheme Retium accepts.
+//! Keys and signatures: ML-DSA-44 (FIPS 204), the only scheme Retium accepts.
 //!
 //! A key file is 37 bytes: `RTSK` ‖ version ‖ 32-byte seed. The seed is the
 //! secret; the public key and the address are derived from it, so a backup of
@@ -64,7 +64,7 @@ impl PublicKey {
         &self.encoded
     }
 
-    /// The encoded key as hex — the form RPC requests carry.
+    /// The encoded key as hex, the form RPC requests carry.
     pub fn to_hex(&self) -> String {
         hex::encode(&self.encoded)
     }
@@ -222,7 +222,7 @@ impl SecretKey {
     }
 
     /// Sign a message. Retium signs the 32-byte canonical hash of a
-    /// transaction — see [`crate::canonical`].
+    /// transaction; see [`crate::canonical`].
     pub fn sign(&self, message: &[u8]) -> Vec<u8> {
         let sig = self.inner.sign(message);
         let mut out = Vec::with_capacity(SIGNATURE_LEN);

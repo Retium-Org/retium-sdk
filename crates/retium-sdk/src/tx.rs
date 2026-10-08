@@ -10,31 +10,50 @@
 //!
 //! Submitting is not the same as settled. Wait for
 //! [`Client::wait_for_final`](crate::rpc::Client::wait_for_final) before you
-//! treat a transfer as done, and expect [`Error::Busy`] now and then — it means
+//! treat a transfer as done, and expect [`Error::Busy`] now and then: it means
 //! "ask again in a moment", not "failed".
 
 use serde_json::json;
 
 use crate::amount;
-use crate::canonical::{CanonicalPayload, ChainId};
+use crate::canonical::{CanonicalPayload, ChainId, FEE_RTD, FEE_RTM};
 use crate::contract;
 use crate::error::{Error, Result};
 use crate::key::SecretKey;
 use crate::rpc::{Client, Submitted};
 
-/// Which network a transaction is signed for. The chain id is part of the
-/// signature, so this must match the endpoint you send to.
+/// How a transaction is signed. Both fields are part of the signature.
 #[derive(Clone, Copy, Debug)]
 pub struct Options {
-    /// Chain id to sign for.
+    /// Chain id to sign for. Every network signs as [`ChainId::Devnet`] until
+    /// mainnet, the public testnet included.
     pub chain: ChainId,
+    /// The coin the gas is paid in: [`FEE_RTM`] (the default) or [`FEE_RTD`],
+    /// Retium Dollar, at 1.5x the RTM fee. Paying in RTD needs RTD in the
+    /// sending wallet.
+    pub fee_currency: u8,
 }
 
 impl Default for Options {
     fn default() -> Self {
         Self {
             chain: ChainId::Devnet,
+            fee_currency: FEE_RTM,
         }
+    }
+}
+
+impl Options {
+    /// Pay the gas in RTD instead of RTM.
+    pub fn gas_in_rtd(mut self) -> Self {
+        self.fee_currency = FEE_RTD;
+        self
+    }
+
+    fn apply(&self, payload: CanonicalPayload) -> CanonicalPayload {
+        payload
+            .on_chain(self.chain)
+            .with_fee_currency(self.fee_currency)
     }
 }
 
@@ -49,8 +68,8 @@ async fn context(client: &Client, address: &str) -> Result<Context> {
             nonce: w.nonce,
             balance_claim: w.balance_atomic()?,
         }),
-        None => Err(Error::Refused(format!(
-            "the chain has no record of {address} — it needs funds before it can send anything"
+        None => Err(Error::Invalid(format!(
+            "the chain has no record of {address}: it needs funds before it can send anything"
         ))),
     }
 }
@@ -65,7 +84,7 @@ pub async fn transfer(
     transfer_with(client, key, to, amount_rtm, Options::default()).await
 }
 
-/// [`transfer`] on a chosen network.
+/// [`transfer`] with chosen options (network, gas coin).
 pub async fn transfer_with(
     client: &Client,
     key: &SecretKey,
@@ -79,8 +98,13 @@ pub async fn transfer_with(
     let from = key.address();
     let atomic = amount::parse_rtm(amount_rtm)?;
     let ctx = context(client, &from).await?;
-    let payload = CanonicalPayload::transfer(&from, to, atomic, ctx.nonce, ctx.balance_claim)
-        .on_chain(opts.chain);
+    let payload = opts.apply(CanonicalPayload::transfer(
+        &from,
+        to,
+        atomic,
+        ctx.nonce,
+        ctx.balance_claim,
+    ));
     let body = json!({
         "from": from,
         "to": to,
@@ -100,6 +124,9 @@ pub async fn transfer_with(
 /// `metadata` is the optional JSON object the node stores with the contract
 /// (`name`, `symbol`, …). It is part of the contract id, so the same code with
 /// different metadata is a different contract.
+///
+/// Runs [`contract::preflight`] first, so a deploy the chain would refuse
+/// fails here without costing gas.
 pub async fn deploy(
     client: &Client,
     key: &SecretKey,
@@ -109,7 +136,7 @@ pub async fn deploy(
     deploy_with(client, key, wasm, metadata, Options::default()).await
 }
 
-/// [`deploy`] on a chosen network.
+/// [`deploy`] with chosen options (network, gas coin).
 pub async fn deploy_with(
     client: &Client,
     key: &SecretKey,
@@ -117,12 +144,16 @@ pub async fn deploy_with(
     metadata: Option<&serde_json::Value>,
     opts: Options,
 ) -> Result<Submitted> {
-    contract::check_deployable(wasm)?;
+    contract::preflight(wasm, metadata)?;
     let from = key.address();
     let id = contract::contract_id(wasm, &from, contract::DEPLOY_WEIGHT, metadata);
     let ctx = context(client, &from).await?;
-    let payload =
-        CanonicalPayload::deploy(&from, &id, ctx.nonce, ctx.balance_claim).on_chain(opts.chain);
+    let payload = opts.apply(CanonicalPayload::deploy(
+        &from,
+        &id,
+        ctx.nonce,
+        ctx.balance_claim,
+    ));
 
     use base64_lite::encode as b64;
     let mut body = json!({
@@ -144,8 +175,12 @@ pub async fn deploy_with(
 /// Call a contract method that changes state. `value_rtm` attaches RTM to the
 /// call; pass `None` for a call that sends nothing.
 ///
-/// A contract can never take RTM out of your wallet by itself — the only money
+/// A contract can never take RTM out of your wallet by itself: the only money
 /// it receives from you is what you attach here, and you sign that amount.
+///
+/// The method and arguments are checked with [`contract::check_call`] before
+/// anything is signed: the chain joins arguments with commas, so an argument
+/// holding `,` `(` `)` or `::` is refused rather than split.
 pub async fn call(
     client: &Client,
     key: &SecretKey,
@@ -166,7 +201,7 @@ pub async fn call(
     .await
 }
 
-/// [`call`] on a chosen network.
+/// [`call`] with chosen options (network, gas coin).
 // One parameter per thing the chain signs; grouping them would hide what is
 // covered by the signature.
 #[allow(clippy::too_many_arguments)]
@@ -179,6 +214,7 @@ pub async fn call_with(
     value_rtm: Option<&str>,
     opts: Options,
 ) -> Result<Submitted> {
+    contract::check_call(method, args)?;
     let from = key.address();
     let value = match value_rtm {
         Some(v) => amount::parse_rtm(v)?,
@@ -188,7 +224,7 @@ pub async fn call_with(
     // so the string signed here must be exactly the one sent.
     let args_joined = args.join(",");
     let ctx = context(client, &from).await?;
-    let payload = CanonicalPayload::call(
+    let payload = opts.apply(CanonicalPayload::call(
         &from,
         contract_id,
         method,
@@ -196,8 +232,7 @@ pub async fn call_with(
         value,
         ctx.nonce,
         ctx.balance_claim,
-    )
-    .on_chain(opts.chain);
+    ));
 
     let mut body = json!({
         "from": from,
@@ -222,9 +257,29 @@ pub async fn stake(client: &Client, key: &SecretKey, amount_rtm: &str) -> Result
     stake_inner(client, key, amount_rtm, true, Options::default()).await
 }
 
+/// [`stake`] with chosen options.
+pub async fn stake_with(
+    client: &Client,
+    key: &SecretKey,
+    amount_rtm: &str,
+    opts: Options,
+) -> Result<Submitted> {
+    stake_inner(client, key, amount_rtm, true, opts).await
+}
+
 /// Release stake back to RTM.
 pub async fn unstake(client: &Client, key: &SecretKey, amount_rtm: &str) -> Result<Submitted> {
     stake_inner(client, key, amount_rtm, false, Options::default()).await
+}
+
+/// [`unstake`] with chosen options.
+pub async fn unstake_with(
+    client: &Client,
+    key: &SecretKey,
+    amount_rtm: &str,
+    opts: Options,
+) -> Result<Submitted> {
+    stake_inner(client, key, amount_rtm, false, opts).await
 }
 
 async fn stake_inner(
@@ -242,12 +297,11 @@ async fn stake_inner(
         )));
     }
     let ctx = context(client, &from).await?;
-    let payload = if staking {
+    let payload = opts.apply(if staking {
         CanonicalPayload::stake(&from, atomic, ctx.nonce, ctx.balance_claim)
     } else {
         CanonicalPayload::unstake(&from, atomic, ctx.nonce, ctx.balance_claim)
-    }
-    .on_chain(opts.chain);
+    });
     let body = json!({
         "amount": atomic.to_string(),
         "nonce": ctx.nonce,

@@ -30,7 +30,7 @@ pub fn sha256_hex(data: &[u8]) -> Result<String, Error> {
 /// Check an ML-DSA-44 signature: the same scheme Retium accounts use.
 ///
 /// This is one of the most expensive things a contract can do. Use it only when
-/// you genuinely need to verify something signed off-chain — a call's `caller`
+/// you genuinely need to verify something signed off-chain. A call's `caller`
 /// is already proven by the chain.
 pub fn verify_signature(
     message: &[u8],

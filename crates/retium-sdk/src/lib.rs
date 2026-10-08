@@ -4,8 +4,8 @@
 //! keys, transaction signing, and a typed client for the public RPC.
 //!
 //! Retium signs with ML-DSA-44 (FIPS 204), a post-quantum scheme. Keys and
-//! signatures are larger than the elliptic-curve ones you may be used to — a
-//! public key is 1,312 bytes and a signature 2,421 — but the shape of the work
+//! signatures are larger than the elliptic-curve ones you may be used to (a
+//! public key is 1,312 bytes and a signature 2,421), but the shape of the work
 //! is the same: build a payload, hash it, sign it, send it.
 //!
 //! ```no_run
@@ -26,13 +26,13 @@
 //!
 //! ## Where to start
 //!
-//! - [`key`] — create, load and back up an account
-//! - [`address`] — checksummed addresses; validate anything a user typed
-//! - [`amount`] — RTM and atomic units, without floating point
-//! - [`canonical`] — exactly what a transaction signs
-//! - [`contract`] — contract ids and RCP-1 metadata
-//! - [`rpc`] — the client
-//! - [`tx`] — build, sign and submit in one call
+//! - [`key`]: create, load and back up an account
+//! - [`address`]: checksummed addresses; validate anything a user typed
+//! - [`amount`]: RTM and atomic units, without floating point
+//! - [`canonical`]: exactly what a transaction signs
+//! - [`contract`]: contract ids and RCP-1 metadata
+//! - [`rpc`]: the client
+//! - [`tx`]: build, sign and submit in one call
 //!
 //! ## Testnet
 //!

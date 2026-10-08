@@ -26,7 +26,7 @@ pub fn block_height() -> i64 {
     unsafe { host::get_block_height() }
 }
 
-/// The block's timestamp in milliseconds — agreed by the chain, not read from a
+/// The block's timestamp in milliseconds, agreed by the chain, not read from a
 /// machine's clock.
 pub fn block_time_ms() -> i64 {
     unsafe { host::get_block_time() }

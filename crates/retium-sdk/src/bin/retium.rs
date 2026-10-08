@@ -1,4 +1,4 @@
-//! `retium` — a command-line tool for the Retium blockchain.
+//! `retium`: a command-line tool for the Retium blockchain.
 //!
 //! Everything it does, the library does too: this is a thin front end over
 //! [`retium_sdk`], not a separate implementation.
@@ -10,7 +10,13 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
-use retium_sdk::{address, amount, canonical::ChainId, contract, key::SecretKey, rpc, tx, Error};
+use retium_sdk::{
+    address, amount,
+    canonical::{ChainId, FEE_RTD, FEE_RTM},
+    contract,
+    key::SecretKey,
+    rpc, tx, Error,
+};
 
 /// Command-line client for the Retium blockchain.
 #[derive(Parser)]
@@ -25,9 +31,14 @@ struct Cli {
     #[arg(long, env = "RETIUM_API_KEY", hide_env_values = true, global = true)]
     api_key: Option<String>,
 
-    /// Network to sign for: mainnet, testnet or devnet.
+    /// Chain id to sign for: mainnet, testnet or devnet. Every network signs
+    /// as devnet until mainnet, the public testnet included; leave it alone.
     #[arg(long, env = "RETIUM_CHAIN", default_value = "devnet", global = true)]
     chain: String,
+
+    /// Coin to pay gas in: RTM, or RTD (Retium Dollar, 1.5x the RTM fee).
+    #[arg(long, env = "RETIUM_FEE", default_value = "RTM", global = true)]
+    fee: String,
 
     /// Key file to sign with.
     #[arg(long, env = "RETIUM_KEY", global = true)]
@@ -81,7 +92,17 @@ enum Command {
         #[arg(long)]
         value: Option<String>,
     },
-    /// Read a contract without sending a transaction (free).
+    /// Read a contract with any argument text, sent as JSON (free, but the
+    /// public endpoint wants an API key for it).
+    View {
+        /// Contract id.
+        contract_id: String,
+        /// Method name.
+        method: String,
+        /// Arguments, in order.
+        args: Vec<String>,
+    },
+    /// Read a contract without sending a transaction (free, no API key).
     Query {
         /// Contract id.
         contract_id: String,
@@ -162,8 +183,20 @@ fn main() -> ExitCode {
 
 fn run(cli: Cli) -> retium_sdk::Result<String> {
     let chain = ChainId::parse(&cli.chain)
-        .ok_or_else(|| Error::Refused(format!("unknown network '{}'", cli.chain)))?;
-    let opts = tx::Options { chain };
+        .ok_or_else(|| Error::Invalid(format!("unknown network '{}'", cli.chain)))?;
+    let fee_currency = match cli.fee.trim().to_ascii_uppercase().as_str() {
+        "RTM" => FEE_RTM,
+        "RTD" => FEE_RTD,
+        other => {
+            return Err(Error::Invalid(format!(
+                "unknown gas coin '{other}': RTM or RTD"
+            )))
+        }
+    };
+    let opts = tx::Options {
+        chain,
+        fee_currency,
+    };
 
     // Key commands need no network.
     if let Command::Key(cmd) = &cli.command {
@@ -227,32 +260,46 @@ fn run(cli: Cli) -> retium_sdk::Result<String> {
                 let key = load_key(cli.key.as_deref())?;
                 let bytes = std::fs::read(&wasm)
                     .map_err(|e| Error::Io(format!("{}: {e}", wasm.display())))?;
-                contract::check_deployable(&bytes)?;
                 let meta = match &metadata {
                     Some(path) => {
                         let text = std::fs::read_to_string(path)
                             .map_err(|e| Error::Io(format!("{}: {e}", path.display())))?;
                         Some(serde_json::from_str::<serde_json::Value>(&text).map_err(|e| {
-                            Error::Refused(format!("{}: not valid JSON: {e}", path.display()))
+                            Error::Invalid(format!("{}: not valid JSON: {e}", path.display()))
                         })?)
                     }
                     None => None,
                 };
+                let checked = contract::preflight(&bytes, meta.as_ref())?;
                 let id = contract::contract_id(&bytes, &key.address(), contract::DEPLOY_WEIGHT, meta.as_ref());
                 if dry_run {
+                    let m = &checked.metadata;
+                    let traits = if m.traits.is_empty() {
+                        "none".to_string()
+                    } else {
+                        m.traits.join(", ")
+                    };
                     return Ok(out(
                         cli.json,
                         &serde_json::json!({
                             "contract_id": id,
-                            "code_hash": contract::code_hash(&bytes),
+                            "code_hash": checked.code_hash,
                             "size_bytes": bytes.len(),
+                            "simulated_weight": checked.simulated_weight,
+                            "embedded_metadata": checked.embedded,
+                            "metadata": m,
                             "submitted": false,
                         }),
                         &format!(
-                            "would deploy {} ({} bytes)\n  contract id {id}\n  code hash   {}",
+                            "would deploy {} ({} bytes)\n  contract id {id}\n  code hash   {}\n  type        {}\n  version     {}\n  weight      {} (the chain scores the code at {})\n  traits      {traits}\n  metadata    {}",
                             wasm.display(),
                             bytes.len(),
-                            contract::code_hash(&bytes)
+                            checked.code_hash,
+                            m.rcp_type,
+                            m.version,
+                            m.weight,
+                            checked.simulated_weight,
+                            if checked.embedded { "embedded in the wasm" } else { "none embedded" },
                         ),
                     ));
                 }
@@ -290,6 +337,11 @@ fn run(cli: Cli) -> retium_sdk::Result<String> {
                 Ok(out(cli.json, &answer, &answer.to_string()))
             }
 
+            Command::View { contract_id, method, args } => {
+                let answer = client.view(&contract_id, &method, &args).await?;
+                Ok(out(cli.json, &answer, &answer.to_string()))
+            }
+
             Command::Tx { tx_id, wait } => {
                 let finality = if wait {
                     client
@@ -306,7 +358,7 @@ fn run(cli: Cli) -> retium_sdk::Result<String> {
             }
 
             Command::Contract { contract_id } => match client.contract(&contract_id).await? {
-                None => Err(Error::Refused(format!("no contract {contract_id}"))),
+                None => Err(Error::Invalid(format!("no contract {contract_id}"))),
                 Some(info) => Ok(out(
                     cli.json,
                     &serde_json::json!({
@@ -334,7 +386,7 @@ fn run(cli: Cli) -> retium_sdk::Result<String> {
                     .contract(&contract_id)
                     .await?
                     .and_then(|c| c.code_hash)
-                    .ok_or_else(|| Error::Refused(format!("no code hash for {contract_id}")))?;
+                    .ok_or_else(|| Error::Invalid(format!("no code hash for {contract_id}")))?;
                 let same = local == deployed;
                 let text = if same {
                     format!("match\n  {contract_id}\n  runs exactly the code in {}", wasm.display())
@@ -350,7 +402,7 @@ fn run(cli: Cli) -> retium_sdk::Result<String> {
                         &text,
                     ))
                 } else {
-                    Err(Error::Refused(text))
+                    Err(Error::Invalid(text))
                 }
             }
 
@@ -359,7 +411,7 @@ fn run(cli: Cli) -> retium_sdk::Result<String> {
                 Ok(out(
                     cli.json,
                     &serde_json::json!({"status": h.status, "tick": h.tick, "version": h.version}),
-                    &format!("{} — tick {}, node {}", h.status, h.tick, h.version),
+                    &format!("{}, tick {}, node {}", h.status, h.tick, h.version),
                 ))
             }
         }

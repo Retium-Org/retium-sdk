@@ -2,9 +2,9 @@
 //!
 //! Two of these matter when you submit a transaction:
 //!
-//! * [`Error::Refused`] — the node looked at it and said no. Sending the same
+//! * [`Error::Refused`]: the node looked at it and said no. Sending the same
 //!   bytes again will not help; fix the transaction.
-//! * [`Error::Busy`] — the node could not take it right now. The same
+//! * [`Error::Busy`]: the node could not take it right now. The same
 //!   transaction may well succeed a moment later.
 
 /// Anything that can go wrong locally or at the node.
@@ -47,6 +47,10 @@ pub enum Error {
     /// The node is busy or mid-handover; try the same transaction again shortly.
     #[error("the node is busy, try again shortly: {0}")]
     Busy(String),
+
+    /// Checked locally and not sent. The message says what to change.
+    #[error("{0}")]
+    Invalid(String),
 
     /// Any other answer from the node.
     #[error("node error (HTTP {status}): {body}")]

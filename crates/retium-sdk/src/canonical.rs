@@ -3,7 +3,7 @@
 //! A signature proves intent, including position in your own sequence (the
 //! nonce) and which accounts the transaction may write to (`declared`). The
 //! node rebuilds this payload from the fields you send and refuses the
-//! transaction if the rebuilt payload does not match your signature — so it can
+//! transaction if the rebuilt payload does not match your signature, so it can
 //! validate, but never rewrite, what you signed.
 //!
 //! Signed message = `blake3(bincode(CanonicalPayload))`.
@@ -30,14 +30,20 @@ pub const FEE_RTD: u8 = 1;
 
 /// Chain identifiers. The chain id is signed, so a transaction made for one
 /// network can never be replayed on another.
+///
+/// Until mainnet, every Retium network signs as [`ChainId::Devnet`],
+/// including the public testnet at `rpc.retium.org`. That is the default
+/// everywhere in this SDK; a transaction signed for `Testnet` is refused there
+/// today.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u32)]
 pub enum ChainId {
     /// The live network.
     Mainnet = 1,
-    /// The public test network.
+    /// Reserved for the public test network. It signs as `Devnet` for now.
     Testnet = 2,
-    /// Development networks, including local fleets.
+    /// The chain id every network uses until mainnet, the public testnet
+    /// included.
     Devnet = 3,
 }
 
@@ -64,10 +70,10 @@ pub const TREASURY: &str = "rete_treasury";
 pub const STAKE_POOL: &str = "STAKE_POOL";
 
 /// The exact struct the node serialises with bincode before hashing. Field
-/// order is part of the format — do not reorder.
+/// order is part of the format: do not reorder.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct CanonicalPayload {
-    /// Payload version — [`VERSION`].
+    /// Payload version: [`VERSION`].
     pub version: u8,
     /// Which network this is for.
     pub chain_id: u32,
@@ -135,7 +141,11 @@ impl CanonicalPayload {
 
     /// The fee coin as the request body names it: "RTM" or "RTD".
     pub fn fee_currency_name(&self) -> &'static str {
-        if self.fee_currency == FEE_RTD { "RTD" } else { "RTM" }
+        if self.fee_currency == FEE_RTD {
+            "RTD"
+        } else {
+            "RTM"
+        }
     }
 
     /// Send RTM to another wallet.
@@ -159,7 +169,7 @@ impl CanonicalPayload {
         )
     }
 
-    /// Deploy a contract. `contract_id` is the id the code will have — see
+    /// Deploy a contract. `contract_id` is the id the code will have; see
     /// [`crate::contract::contract_id`].
     pub fn deploy(sender: &str, contract_id: &str, nonce: u64, balance_claim: u128) -> Self {
         Self::new(
@@ -245,7 +255,7 @@ impl CanonicalPayload {
     }
 }
 
-/// Sorted, de-duplicated — the form the node compares against.
+/// Sorted, de-duplicated: the form the node compares against.
 pub fn normalize(mut list: Vec<String>) -> Vec<String> {
     list.sort();
     list.dedup();
