@@ -12,4 +12,4 @@ let sent = tx::transfer(&client, &key, "rete...", "1.5").await?;
 
 Signing is ML-DSA-44 (FIPS 204) and happens locally. No key material ever leaves your machine.
 
-Start with the [documentation](https://github.com/Retium-Org/retium-sdk/tree/main/docs). Licence: Apache-2.0.
+Start with the [documentation](https://github.com/Retium-Org/retium-sdk/tree/main/docs). Licensed under Apache-2.0.

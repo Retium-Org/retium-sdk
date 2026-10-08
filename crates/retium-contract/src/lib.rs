@@ -72,9 +72,11 @@ pub const MAX_EVENT_TYPE: usize = 64;
 
 /// What went wrong inside a contract.
 ///
-/// Returning an `Err` from a handler produces a JSON error reply. The call
-/// still counts as executed, so any state you already wrote stays written. Use
-/// [`fail`] when you need the call undone.
+/// Returning an `Err` from a handler produces a JSON error reply. When the
+/// call came from a user, the chain treats that reply as a refusal and undoes
+/// the whole call, and any RTM attached goes back to the sender. When another
+/// contract called you, it gets the reply as data and your writes stay unless
+/// that contract fails too.
 pub type Error = String;
 
 /// The result of a handler.
@@ -93,9 +95,10 @@ pub fn ok(data: &str) -> Reply {
 
 /// A failed reply carrying `message`.
 ///
-/// The call still counts as executed and the sender still pays gas, so any
-/// state written before this point stays written. Check first and write second,
-/// or use [`fail`] to undo the whole call.
+/// On a call from a user, the chain undoes everything the call did and keeps
+/// the message as the reason. The sender still pays gas. On a call from
+/// another contract, the caller receives this reply and decides, so check
+/// before you write if other contracts call you.
 pub fn error(message: &str) -> Reply {
     Err(message.to_string())
 }
@@ -103,8 +106,9 @@ pub fn error(message: &str) -> Reply {
 /// Abandon the call and undo everything it has done.
 ///
 /// This traps the module. The chain discards every write, event and transfer
-/// the call made. The sender still pays gas and uses their nonce. It is the
-/// only way to be certain a half-finished change does not stick.
+/// the call made, including those of any contract it called. A contract that
+/// called you gets an `Err` back instead of a reply. The sender still pays gas
+/// and uses their nonce.
 pub fn fail(_reason: &str) -> ! {
     #[cfg(target_arch = "wasm32")]
     {

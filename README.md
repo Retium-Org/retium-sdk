@@ -51,14 +51,14 @@ retium key new my-wallet.sk --show-seed
 
 This writes `my-wallet.sk` and prints your address and a 64-character seed. Write the seed down and keep it offline. Anyone who has it owns the account, and without it a lost key file cannot be recovered.
 
-Keep the key file outside any repository you push. This repo ignores `*.sk` files, but a copy elsewhere is up to you. Point the tool at it:
+Keep the key file outside any repository you push. This repo ignores `*.sk` files, but a copy elsewhere is up to you. Then point the tool at it.
 
 ```bash
 export RETIUM_KEY=$PWD/my-wallet.sk
 retium balance
 ```
 
-Already have a Retium wallet? Copy its private key (64 hex characters) and turn it into a key file instead:
+Already have a Retium wallet? Copy its private key (64 hex characters) and turn it into a key file instead.
 
 ```bash
 retium key import my-wallet.sk --seed <64 hex characters>
@@ -117,6 +117,9 @@ The full walk-through is in [docs/02-quickstart.md](docs/02-quickstart.md).
 6. [Verifying code](docs/06-verifying-code.md). Proving a deployed contract is the source you published
 7. [Security](docs/07-security.md). Keys, and what the chain does and does not protect you from
 8. [Wire reference](docs/08-wire-reference.md). The HTTP interface, the signed byte layout and the contract interface, for building in another language
+9. [Tokens](docs/09-tokens.md). What wallets and other contracts expect from a fungible token
+10. [Connecting a wallet](docs/10-connecting-a-wallet.md). Asking the Retium wallet to sign from a web page
+11. [Errors](docs/11-errors.md). What the messages mean and what to do
 
 ## Testnet
 

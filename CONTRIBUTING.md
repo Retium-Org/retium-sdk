@@ -16,7 +16,7 @@ cargo build --release --target wasm32-unknown-unknown -p hello_counter
 * **Tests for the refusal paths**, not only the happy path. Most contract bugs are missing checks.
 * **Documentation that explains why**, not what the code already says.
 * **No new dependency** without a reason in the pull request description. This SDK is deliberately small.
-* **Nothing that weakens a check** the chain relies on — if something looks like it should be optional, ask first.
+* **Nothing that weakens a check** the chain relies on. If something looks like it should be optional, ask first.
 
 ## Security problems
 
