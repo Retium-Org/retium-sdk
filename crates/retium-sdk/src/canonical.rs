@@ -12,14 +12,14 @@
 //! use retium_sdk::{canonical::CanonicalPayload, key::SecretKey};
 //! let key = SecretKey::from_seed(&[1u8; 32]);
 //! let me = key.address();
-//! let payload = CanonicalPayload::transfer(&me, "rete…recipient…", 1_000_000, 0, 5_000_000);
+//! let payload = CanonicalPayload::transfer(&me, "rete...recipient...", 1_000_000, 0, 5_000_000);
 //! let signature = key.sign_hex(&payload.signing_hash());
 //! # let _ = signature;
 //! ```
 
 use serde::{Deserialize, Serialize};
 
-/// Payload version. v4 came with the 2026 post-quantum migration; v5 added
+/// Payload version. v4 came with the 2026 post-quantum migration and v5 added
 /// [`CanonicalPayload::fee_currency`], the coin the gas is paid in.
 pub const VERSION: u8 = 5;
 
@@ -33,7 +33,7 @@ pub const FEE_RTD: u8 = 1;
 ///
 /// Until mainnet, every Retium network signs as [`ChainId::Devnet`],
 /// including the public testnet at `rpc.retium.org`. That is the default
-/// everywhere in this SDK; a transaction signed for `Testnet` is refused there
+/// everywhere in this SDK. A transaction signed for `Testnet` is refused there
 /// today.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u32)]
@@ -70,18 +70,18 @@ pub const TREASURY: &str = "rete_treasury";
 pub const STAKE_POOL: &str = "STAKE_POOL";
 
 /// The exact struct the node serialises with bincode before hashing. Field
-/// order is part of the format: do not reorder.
+/// order is part of the format, so do not reorder.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct CanonicalPayload {
     /// Payload version: [`VERSION`].
     pub version: u8,
     /// Which network this is for.
     pub chain_id: u32,
-    /// `transfer`, `deploy`, `call`, `stake`, `unstake`, …
+    /// `transfer`, `deploy`, `call`, `stake`, `unstake` and so on.
     pub action: String,
     /// Your address.
     pub sender: String,
-    /// The other side: a wallet, a contract id, or a reserved name.
+    /// The other side, which is a wallet, a contract id or a reserved name.
     pub recipient: String,
     /// Atomic units moved by this transaction.
     pub amount: u128,
@@ -91,7 +91,7 @@ pub struct CanonicalPayload {
     /// check their view is at least this, which makes their result independent
     /// of when other transactions arrive.
     pub sender_balance_claim: u128,
-    /// Contract method for `call`; the role for `register_validator`; empty otherwise.
+    /// Contract method for `call`, the role for `register_validator`, empty otherwise.
     pub method: String,
     /// blake3 of the call arguments, of the endpoint, or zeros.
     pub args_hash: [u8; 32],
@@ -103,7 +103,7 @@ pub struct CanonicalPayload {
 }
 
 impl CanonicalPayload {
-    // One parameter per signed field: grouping them would hide what the
+    // One parameter per signed field. Grouping them would hide what the
     // signature covers, which is the whole point of this type.
     #[allow(clippy::too_many_arguments)]
     fn new(
@@ -139,7 +139,7 @@ impl CanonicalPayload {
         self
     }
 
-    /// The fee coin as the request body names it: "RTM" or "RTD".
+    /// The fee coin as the request body names it, "RTM" or "RTD".
     pub fn fee_currency_name(&self) -> &'static str {
         if self.fee_currency == FEE_RTD {
             "RTD"
@@ -169,7 +169,7 @@ impl CanonicalPayload {
         )
     }
 
-    /// Deploy a contract. `contract_id` is the id the code will have; see
+    /// Deploy a contract. `contract_id` is the id the code will have. See
     /// [`crate::contract::contract_id`].
     pub fn deploy(sender: &str, contract_id: &str, nonce: u64, balance_claim: u128) -> Self {
         Self::new(
@@ -255,7 +255,7 @@ impl CanonicalPayload {
     }
 }
 
-/// Sorted, de-duplicated: the form the node compares against.
+/// Sorted and de-duplicated, the form the node compares against.
 pub fn normalize(mut list: Vec<String>) -> Vec<String> {
     list.sort();
     list.dedup();

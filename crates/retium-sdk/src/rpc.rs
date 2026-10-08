@@ -3,8 +3,8 @@
 //! Everything goes through a public RPC endpoint. You never address keepers
 //! directly, and you never need one of your own to build on Retium.
 //!
-//! Reads are open. Writes need an API key header on the public endpoint; a key
-//! only raises your rate limit, it grants no authority; authority comes from
+//! Reads are open. Writes need an API key header on the public endpoint. A key
+//! only raises your rate limit and grants no authority. Authority comes from
 //! your signature.
 
 use std::time::Duration;
@@ -34,7 +34,7 @@ pub struct Wallet {
 }
 
 impl Wallet {
-    /// Confirmed balance in atomic units: what a transaction's balance claim
+    /// Confirmed balance in atomic units, which is what a transaction's balance claim
     /// needs.
     pub fn balance_atomic(&self) -> Result<u128> {
         amount::parse_rtm(&self.balance_rtm)
@@ -44,7 +44,7 @@ impl Wallet {
 /// What the node says about a submitted transaction.
 #[derive(Deserialize, Debug, Clone)]
 pub struct Submitted {
-    /// The transaction's id; look it up to follow its progress.
+    /// The transaction's id. Look it up to follow its progress.
     pub tx_id: String,
     /// The node's own word for what it did with it.
     #[serde(default)]
@@ -91,7 +91,7 @@ impl Finality {
 pub struct ContractInfo {
     /// The contract's id.
     pub contract_id: String,
-    /// blake3 of the deployed wasm; compare this with your own build.
+    /// blake3 of the deployed wasm. Compare this with your own build.
     #[serde(default)]
     pub code_hash: Option<String>,
     /// The RCP-1 metadata the deployer declared.
@@ -113,7 +113,7 @@ pub struct Health {
 
 /// An HTTP client for one Retium endpoint.
 ///
-/// Cheap to clone; reuse one per process rather than building it per call.
+/// Cheap to clone. Reuse one per process rather than building it per call.
 #[derive(Clone)]
 pub struct Client {
     http: reqwest::Client,
@@ -161,7 +161,7 @@ impl Client {
         }
         serde_json::from_str(&body)
             .map(Some)
-            .map_err(|e| Error::Unexpected(format!("{e} in: {}", first_line(&body))))
+            .map_err(|e| Error::Unexpected(format!("{e} in {}", first_line(&body))))
     }
 
     async fn post<T: DeserializeOwned>(&self, path: &str, body: &impl Serialize) -> Result<T> {
@@ -180,7 +180,7 @@ impl Client {
             .map_err(|e| Error::Transport(e.to_string()))?;
         if status.is_success() {
             return serde_json::from_str(&text)
-                .map_err(|e| Error::Unexpected(format!("{e} in: {}", first_line(&text))));
+                .map_err(|e| Error::Unexpected(format!("{e} in {}", first_line(&text))));
         }
         Err(error_for(status.as_u16(), &text))
     }
@@ -215,7 +215,7 @@ impl Client {
 
     /// Wait until a transaction is settled or refused.
     ///
-    /// Polls gently; give it a timeout you are happy to block for.
+    /// Polls gently. Give it a timeout you are happy to block for.
     pub async fn wait_for_final(&self, tx_id: &str, timeout: Duration) -> Result<Finality> {
         let start = std::time::Instant::now();
         loop {
@@ -239,7 +239,7 @@ impl Client {
         self.get(&format!("/api/contract/{contract_id}")).await
     }
 
-    /// Read a contract without sending a transaction: no gas, no state change,
+    /// Read a contract without sending a transaction. No gas, no state change,
     /// no API key.
     ///
     /// The read endpoint takes the method and arguments in the URL and does
@@ -281,7 +281,7 @@ impl Client {
             "method": method,
             "args": args,
             "view": true,
-            // The endpoint reads a nonce before it looks at `view`; a view
+            // The endpoint reads a nonce before it looks at `view`. A view
             // signs nothing and uses none.
             "nonce": 0,
         });
@@ -310,7 +310,7 @@ pub struct ClientBuilder {
 }
 
 impl ClientBuilder {
-    /// Send this key with writes. It raises your rate limit; it grants no
+    /// Send this key with writes. It raises your rate limit and grants no
     /// authority over any account.
     pub fn api_key(mut self, key: impl Into<String>) -> Self {
         let key = key.into();
@@ -363,7 +363,7 @@ fn error_for(status: u16, body: &str) -> Error {
 fn first_line(s: &str) -> String {
     let line = s.lines().next().unwrap_or("").trim();
     if line.len() > 300 {
-        format!("{}…", &line[..300])
+        format!("{}...", &line[..300])
     } else {
         line.to_string()
     }

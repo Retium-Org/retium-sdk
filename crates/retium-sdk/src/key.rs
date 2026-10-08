@@ -1,10 +1,10 @@
-//! Keys and signatures: ML-DSA-44 (FIPS 204), the only scheme Retium accepts.
+//! Keys and signatures. Retium accepts one scheme, ML-DSA-44 (FIPS 204).
 //!
-//! A key file is 37 bytes: `RTSK` ‖ version ‖ 32-byte seed. The seed is the
-//! secret; the public key and the address are derived from it, so a backup of
+//! A key file is 37 bytes, `RTSK` then a version byte then the 32-byte seed.
+//! The seed is the secret. The public key and the address are derived from it, so a backup of
 //! those 32 bytes is a complete backup of the account.
 //!
-//! The secret never leaves this process: signing is local, and [`SecretKey`]
+//! The secret never leaves this process. Signing is local, and [`SecretKey`]
 //! wipes its seed from memory when dropped.
 
 use ml_dsa::{Keypair as _, MlDsa44, Signer as _, Verifier as _};
@@ -20,14 +20,14 @@ pub const VERSION: u8 = 2;
 pub const SEED_LEN: usize = 32;
 /// Length of an encoded public key.
 pub const PUBLIC_KEY_LEN: usize = 1312;
-/// Length of a signature: version byte + ML-DSA-44 signature.
+/// Length of a signature, a version byte plus the ML-DSA-44 signature.
 pub const SIGNATURE_LEN: usize = 1 + 2420;
 /// Key files start with these four bytes.
 pub const KEY_FILE_MAGIC: &[u8; 4] = b"RTSK";
-/// Length of a key file: magic + version + seed.
+/// Length of a key file, magic plus version plus seed.
 pub const KEY_FILE_LEN: usize = 4 + 1 + SEED_LEN;
 
-/// A public key. Safe to publish; an account's address is derived from it.
+/// A public key. Safe to publish, and an account's address is derived from it.
 #[derive(Clone)]
 pub struct PublicKey {
     encoded: Vec<u8>,
@@ -96,7 +96,7 @@ impl Eq for PublicKey {}
 
 impl std::fmt::Debug for PublicKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "PublicKey({}…)", &self.to_hex()[..16])
+        write!(f, "PublicKey({}...)", &self.to_hex()[..16])
     }
 }
 
@@ -188,7 +188,7 @@ impl SecretKey {
     }
 
     /// Write a key file, readable only by its owner on Unix. Refuses to
-    /// overwrite: a key file is not something to replace by accident.
+    /// overwrite, because a key file is not something to replace by accident.
     pub fn write_key_file(&self, path: impl AsRef<std::path::Path>) -> Result<()> {
         let path = path.as_ref();
         if path.exists() {
@@ -222,7 +222,7 @@ impl SecretKey {
     }
 
     /// Sign a message. Retium signs the 32-byte canonical hash of a
-    /// transaction; see [`crate::canonical`].
+    /// transaction. See [`crate::canonical`].
     pub fn sign(&self, message: &[u8]) -> Vec<u8> {
         let sig = self.inner.sign(message);
         let mut out = Vec::with_capacity(SIGNATURE_LEN);

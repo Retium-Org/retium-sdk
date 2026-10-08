@@ -35,7 +35,7 @@ fn a_transfer_matches_the_layout_in_the_wire_reference() {
     // Built by hand, exactly as docs/08-wire-reference.md §3 describes.
     let mut expected = Vec::new();
     expected.push(5u8); // version
-    expected.extend_from_slice(&2u32.to_le_bytes()); // chain_id: testnet
+    expected.extend_from_slice(&2u32.to_le_bytes()); // chain_id, testnet
     expected.extend_from_slice(&string("transfer"));
     expected.extend_from_slice(&string(ALICE));
     expected.extend_from_slice(&string(BOB));
@@ -44,9 +44,9 @@ fn a_transfer_matches_the_layout_in_the_wire_reference() {
     expected.extend_from_slice(&claim.to_le_bytes());
     expected.extend_from_slice(&string("")); // method
     expected.extend_from_slice(&[0u8; 32]); // args_hash
-                                            // declared: sorted by byte order, de-duplicated
+                                            // declared, sorted by byte order, de-duplicated
     expected.extend_from_slice(&list(&[ALICE, BOB, "rete_treasury"]));
-    expected.push(0u8); // fee_currency: RTM
+    expected.push(0u8); // fee_currency, RTM
 
     let actual = bincode::serialize(&payload).expect("serialises");
     assert_eq!(
@@ -60,15 +60,16 @@ fn a_transfer_matches_the_layout_in_the_wire_reference() {
 
 #[test]
 fn a_call_hashes_its_arguments_joined_with_commas() {
-    let payload = CanonicalPayload::call(ALICE, "contract-id", "transfer", "rete…bob,10", 0, 1, 0);
+    let payload =
+        CanonicalPayload::call(ALICE, "contract-id", "transfer", "rete...bob,10", 0, 1, 0);
     assert_eq!(
         payload.args_hash,
-        *blake3::hash(b"rete\xe2\x80\xa6bob,10").as_bytes(),
+        *blake3::hash(b"rete...bob,10").as_bytes(),
         "args_hash is blake3 of the comma-joined argument string"
     );
     assert!(
         payload.declared.is_empty(),
-        "a call declares nothing; the chain derives the write set"
+        "a call declares nothing, the chain derives the write set"
     );
 }
 
@@ -94,7 +95,7 @@ fn every_chain_id_changes_the_signed_bytes() {
     }
 }
 
-/// The node's own v5 vectors (canonical.rs `v5_vectors_for_the_wallet`): the
+/// Test vectors published with the node for canonical v5. The
 /// same transfer with gas in RTM and in RTD, on the development chain id.
 #[test]
 fn transfers_match_the_node_v5_vectors() {

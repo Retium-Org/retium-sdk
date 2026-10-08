@@ -87,13 +87,13 @@ pub fn rtm_balance_of(address: &str) -> Result<u128, Error> {
 /// Send RTM from this contract to `to`.
 ///
 /// A contract can only ever move its own RTM. There is no way to take RTM from
-/// the caller's wallet: what they attach to a call is all you get.
+/// the caller's wallet. What they attach to a call is all you get.
 pub fn send_rtm(to: &str, amount: u128) -> Result<String, Error> {
     contract(RTM, "transfer", &[to, &amount.to_string()])
 }
 
-/// Whether a reply from another contract reports an error: a JSON object with
-/// a top-level `error` field, which is what [`error`](crate::error) produces.
+/// Whether a reply from another contract reports an error, meaning a JSON
+/// object with a top-level `error` field, which is what [`error`](crate::error) produces.
 ///
 /// A plain value such as an RTM balance, or `error` appearing inside some other
 /// field's text, is not an error reply.
@@ -103,7 +103,7 @@ pub fn is_error_reply(reply: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// Arguments as the chain reads them: a JSON array of strings.
+/// Arguments as the chain reads them, a JSON array of strings.
 fn encode_args(args: &[&str]) -> String {
     let mut out = String::from("[");
     for (i, arg) in args.iter().enumerate() {

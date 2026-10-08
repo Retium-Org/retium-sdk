@@ -1,5 +1,5 @@
 # Pinned so a contract built today and rebuilt next year produces the same
-# bytes: contract code identity on Retium is a hash of the wasm you deploy.
+# bytes. Contract code identity on Retium is a hash of the wasm you deploy.
 [toolchain]
 channel = "1.91.1"
 components = ["rustfmt", "clippy"]

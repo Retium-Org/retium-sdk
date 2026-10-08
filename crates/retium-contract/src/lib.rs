@@ -72,7 +72,7 @@ pub const MAX_EVENT_TYPE: usize = 64;
 
 /// What went wrong inside a contract.
 ///
-/// Returning an `Err` from a handler produces a JSON error reply; the call
+/// Returning an `Err` from a handler produces a JSON error reply. The call
 /// still counts as executed, so any state you already wrote stays written. Use
 /// [`fail`] when you need the call undone.
 pub type Error = String;
@@ -83,7 +83,7 @@ pub type Reply = Result<String, Error>;
 /// A successful reply carrying `data`.
 ///
 /// The chain requires a reply to be valid JSON, so this wraps `data` as
-/// `{"ok":true,"data":"…"}` with the value escaped for you.
+/// `{"ok":true,"data":"..."}` with the value escaped for you.
 pub fn ok(data: &str) -> Reply {
     Ok(format!(
         "{{\"ok\":true,\"data\":{}}}",
@@ -94,7 +94,7 @@ pub fn ok(data: &str) -> Reply {
 /// A failed reply carrying `message`.
 ///
 /// The call still counts as executed and the sender still pays gas, so any
-/// state written before this point stays written. Check first, write second:
+/// state written before this point stays written. Check first and write second,
 /// or use [`fail`] to undo the whole call.
 pub fn error(message: &str) -> Reply {
     Err(message.to_string())
@@ -103,7 +103,7 @@ pub fn error(message: &str) -> Reply {
 /// Abandon the call and undo everything it has done.
 ///
 /// This traps the module. The chain discards every write, event and transfer
-/// the call made; the sender still pays gas and uses their nonce. It is the
+/// the call made. The sender still pays gas and uses their nonce. It is the
 /// only way to be certain a half-finished change does not stick.
 pub fn fail(_reason: &str) -> ! {
     #[cfg(target_arch = "wasm32")]
@@ -131,7 +131,7 @@ impl Call {
         &self.action
     }
 
-    /// Who signed this call. The chain proves this; you do not have to.
+    /// Who signed this call. The chain proves it, so you do not have to.
     pub fn caller(&self) -> &str {
         &self.caller
     }
@@ -217,7 +217,7 @@ macro_rules! entrypoint {
 /// Embed your contract's RCP-1 metadata in the wasm.
 ///
 /// The chain reads it at deploy and shows it to wallets and explorers. Give
-/// all seven fields, as JSON; the chain refuses the deploy if one is missing:
+/// all seven fields as JSON. The chain refuses the deploy if one is missing.
 ///
 /// ```ignore
 /// retium_contract::rcp_metadata!(r#"{"rcp_type":"counter","traits":["demo"],
@@ -225,7 +225,7 @@ macro_rules! entrypoint {
 ///     "weight":5,"version":"v1.0.0"}"#);
 /// ```
 ///
-/// `weight` must fit the chain's analysis of your code; for a Rust contract
+/// `weight` must fit the chain's analysis of your code. For a Rust contract
 /// that is 5. `retium deploy --dry-run` checks all of it before you pay gas.
 #[macro_export]
 macro_rules! rcp_metadata {
@@ -288,7 +288,7 @@ pub fn __dispatch(
 /// Copy the call input out of the module's memory.
 ///
 /// The runtime writes the input at offset 0, so `input_ptr` is 0. That is an
-/// ordinary wasm address, but Rust keeps address 0 to mean "no reference": a
+/// ordinary wasm address, but Rust keeps address 0 to mean "no reference", so a
 /// `&u8` pointing there reads as `None`. The bytes are therefore read through
 /// the raw pointer and copied, and no reference to them is ever formed.
 #[cfg(target_arch = "wasm32")]
@@ -338,7 +338,7 @@ mod tests {
     #[test]
     fn the_caller_cannot_be_forged_through_an_argument() {
         // An attacker puts something that looks like a caller field inside an
-        // argument. A real parse keeps them apart; a substring search would not.
+        // argument. A real parse keeps them apart and a substring search would not.
         let input = r#"{"action":"admin","caller":"rete-attacker","args":["\"caller\":\"rete-admin\""],"token_context":null,"value":"0"}"#;
         let call = Call::from_json(input).unwrap();
         assert_eq!(

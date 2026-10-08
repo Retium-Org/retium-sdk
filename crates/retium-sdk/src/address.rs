@@ -4,9 +4,9 @@
 //! a truncated paste is refused instead of being paid to:
 //!
 //! ```text
-//! rete ‖ hex(H) ‖ hex(C)      72 characters
+//! rete || hex(H) || hex(C)      72 characters
 //!   H = blake3(public key)            32 bytes
-//!   C = blake3("retium.addr.v1" ‖ H)   first 2 bytes
+//!   C = blake3("retium.addr.v1" || H)   first 2 bytes
 //! ```
 //!
 //! Reserved ledger accounts (`rete_treasury`, `rete_burn`) are not addresses:
@@ -40,7 +40,7 @@ pub fn from_public_key(key: &PublicKey) -> String {
     from_hash(blake3::hash(key.as_bytes()).as_bytes())
 }
 
-/// Is `s` a well-formed Retium address: right length and prefix, lowercase
+/// Is `s` a well-formed Retium address, with the right length and prefix, lowercase
 /// hex, checksum intact? Check every address a user typed or pasted before you
 /// put it in a transaction.
 pub fn is_valid(s: &str) -> bool {

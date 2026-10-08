@@ -1,8 +1,8 @@
-//! Contract storage: the only place state survives between calls.
+//! Contract storage, the only place state survives between calls.
 //!
-//! Storage belongs to your contract; no other contract can write it. Keys are
+//! Storage belongs to your contract and no other contract can write it. Keys are
 //! strings you choose, values are strings up to [`MAX_VALUE`]
-//! bytes. Writing an empty value clears the key: it reads as not set from then
+//! bytes. Writing an empty value clears the key, so it reads as not set from then
 //! on. Its name stays in the chain's key list, see [`keys_with_prefix`].
 //!
 //! Storage is permanent and costs fuel by size. Store what you need, not
@@ -29,7 +29,7 @@ pub fn set(key: &str, value: &str) -> Result<(), Error> {
     }
     if value.len() > MAX_VALUE {
         return Err(format!(
-            "value is {} bytes; the limit is {MAX_VALUE}",
+            "value is {} bytes, the limit is {MAX_VALUE}",
             value.len()
         ));
     }
@@ -117,7 +117,7 @@ pub fn remove(key: &str) -> Result<(), Error> {
 /// Keys that start with `prefix`, as the chain has them, in order.
 ///
 /// A key that was cleared is still listed, so read a key before relying on it.
-/// Costs fuel per key returned: use narrow prefixes, and never assume the list
+/// Costs fuel per key returned, so use narrow prefixes and never assume the list
 /// is small. A list too long to read in one go is an error, never a shorter
 /// list.
 pub fn keys_with_prefix(prefix: &str) -> Result<Vec<String>, Error> {
@@ -140,7 +140,7 @@ pub fn keys_with_prefix(prefix: &str) -> Result<Vec<String>, Error> {
 /// Turn what the chain wrote into keys. The chain cuts its answer at the size
 /// of the buffer, and a cut list does not parse, so it is refused as a whole.
 fn read_key_list(raw: Vec<u8>, prefix: &str) -> Result<Vec<String>, Error> {
-    let too_long = || format!("too many keys under '{prefix}' to list; use a narrower prefix");
+    let too_long = || format!("too many keys under '{prefix}' to list, use a narrower prefix");
     if raw.len() >= KEY_LIST_BUFFER {
         return Err(too_long());
     }
@@ -177,7 +177,7 @@ mod tests {
         );
         assert!(read("[]").unwrap().is_empty());
         assert!(read("").unwrap().is_empty());
-        // What a full buffer leaves behind: the list stops in the middle.
+        // A full buffer leaves the list stopped in the middle.
         let err = read(r#"["token:1","token:2","tok"#).unwrap_err();
         assert!(err.contains("narrower prefix"), "{err}");
         assert!(read(r#"["token:1","token:2""#).is_err());

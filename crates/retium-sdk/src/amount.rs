@@ -13,7 +13,7 @@ pub const DECIMALS: u32 = 18;
 
 /// Parse human input ("1", "0.5", "1 234.75") into atomic units.
 ///
-/// Refuses anything it cannot represent exactly: more than 18 decimal places,
+/// Refuses anything it cannot represent exactly, such as more than 18 decimal places,
 /// a negative sign, letters, or an empty string.
 pub fn parse_rtm(input: &str) -> Result<u128> {
     let cleaned: String = input

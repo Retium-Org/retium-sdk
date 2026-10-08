@@ -8,7 +8,7 @@
 //! The node writes the input with a standard JSON writer, so strings arrive
 //! escaped. They are decoded exactly, and structure (a closing quote, `]`, `}`)
 //! is only ever looked for outside strings. Input that is not well formed is
-//! refused as a whole: a call never runs on a half-read input.
+//! refused as a whole, so a call never runs on a half-read input.
 
 use alloc::format;
 use alloc::string::String;
@@ -24,7 +24,7 @@ pub enum Value {
     /// An array whose elements are all strings.
     Strings(Vec<String>),
     Null,
-    /// Any other well-formed value: a number, `true`, `false`, an object, or
+    /// Any other well-formed value, such as a number, `true`, `false`, an object, or
     /// an array holding something that is not a string. Stepped over, not read,
     /// so a field this crate does not know cannot break a call.
     Other,
@@ -179,7 +179,7 @@ fn parse_string(b: &[u8], start: usize) -> Result<(String, usize), String> {
                         let hi = hex4(b, i).ok_or_else(|| malformed("bad \\u escape"))?;
                         i += 4;
                         let code = if (0xD800..=0xDBFF).contains(&hi) {
-                            // First half of a pair: the second half must follow.
+                            // First half of a pair, so the second half must follow.
                             if b.get(i) != Some(&b'\\') || b.get(i + 1) != Some(&b'u') {
                                 return Err(malformed("half of a \\u pair"));
                             }
@@ -267,7 +267,7 @@ fn skip_value(b: &[u8], start: usize) -> Result<usize, String> {
 }
 
 /// The array starting at `b[start]`, if every element is a string. `None` when
-/// it holds something else; an error when it is not well formed.
+/// it holds something else, an error when it is not well formed.
 fn parse_strings(b: &[u8], start: usize) -> Result<Option<(Vec<String>, usize)>, String> {
     let mut items = Vec::new();
     let mut i = skip_ws(b, start + 1);

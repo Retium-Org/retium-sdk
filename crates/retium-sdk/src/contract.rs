@@ -5,16 +5,16 @@
 //! itself, who deploys it, and the metadata sent with the deploy:
 //!
 //! ```text
-//! contract_id = hex(blake3( wasm ‖ deployer ‖ [weight] ‖ name? ‖ symbol? ‖ rcp_type? ‖ traits… ))
+//! contract_id = hex(blake3( wasm || deployer || [weight] || name? || symbol? || rcp_type? || traits... ))
 //! ```
 //!
 //! Two consequences worth understanding before you deploy:
 //!
 //! * You can compute the id **before** you send anything, and the payload you
 //!   sign names that id. Deploying the same bytes twice from the same account
-//!   with the same metadata is refused: the id already exists.
+//!   with the same metadata is refused, because the id already exists.
 //! * Anyone can deploy code with the same name or symbol as yours. Only the
-//!   code hash is computed by the chain; `name`, `symbol`, `traits` and
+//!   code hash is computed by the chain. `name`, `symbol`, `traits` and
 //!   `capabilities` are declared by whoever deploys, so a wallet or explorer
 //!   that trusts a symbol is trusting the deployer, not the chain. Identify
 //!   contracts by id or code hash.
@@ -28,7 +28,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::{Error, Result};
 
 /// The largest contract the chain accepts, in bytes (1 MiB). A deploy above
-/// this is refused with HTTP 413; check locally before you upload.
+/// this is refused with HTTP 413, so check locally before you upload.
 pub const MAX_WASM_BYTES: usize = 1024 * 1024;
 
 /// Gas weight the RPC deploy path always uses.
@@ -45,17 +45,17 @@ pub const MAX_DECIMALS: u32 = 38;
 pub const METADATA_MARKER: &[u8] = b"RCP_METADATA:";
 
 /// The function every contract must export. The chain calls it for every
-/// action; the contract crate's `entrypoint!` defines it for you.
+/// action and the contract crate's `entrypoint!` defines it for you.
 pub const ENTRY_EXPORT: &str = "on_use";
 
 /// RCP-1 metadata, as the node reads it out of the wasm.
 ///
-/// All seven fields are required, exactly as the node parses them: a field
+/// All seven fields are required, exactly as the node parses them. A field
 /// left out makes the whole deploy fail. Write empty values where you have
 /// nothing to say (`"lockable_fields":[]`, `"evolves_from":""`).
 ///
 /// `weight` is checked against the chain's own analysis of your code (see
-/// [`simulated_weight`]): it must be that number or one above it. For a Rust
+/// [`simulated_weight`]). It must be that number or one above it. For a Rust
 /// contract that is nearly always 5.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct Metadata {
@@ -69,7 +69,7 @@ pub struct Metadata {
     pub lockable_fields: Vec<String>,
     /// The id of the contract this one replaces, or `""`.
     pub evolves_from: String,
-    /// Gas weight 1–5.
+    /// Gas weight 1 to 5.
     pub weight: u8,
     /// Your version string, e.g. `"v1.0.0"`.
     pub version: String,
@@ -118,7 +118,7 @@ impl Metadata {
 
 /// Read the RCP-1 metadata embedded in a wasm module.
 ///
-/// `Ok(None)` when the module has no marker (or no NUL after it): the node then
+/// `Ok(None)` when the module has no marker (or no NUL after it). The node then
 /// records a minimal `"Unknown"` contract. `Err` when there is a marker but the
 /// JSON after it is not what the node accepts, and the node refuses that deploy.
 pub fn read_metadata(wasm: &[u8]) -> Result<Option<Metadata>> {
@@ -135,7 +135,7 @@ pub fn read_metadata(wasm: &[u8]) -> Result<Option<Metadata>> {
     let text = std::str::from_utf8(&rest[..end])
         .map_err(|_| Error::Invalid("embedded RCP-1 metadata is not UTF-8".into()))?;
     let meta: Metadata = serde_json::from_str(text)
-        .map_err(|e| Error::Invalid(format!("embedded RCP-1 metadata: {e}")))?;
+        .map_err(|e| Error::Invalid(format!("embedded RCP-1 metadata is not valid ({e})")))?;
     meta.validate()?;
     Ok(Some(meta))
 }
@@ -172,7 +172,7 @@ pub fn contract_id(
     hasher.finalize().to_hex().to_string()
 }
 
-/// The chain's identity for a piece of code: `blake3(wasm)`, hex.
+/// The chain's identity for a piece of code, `blake3(wasm)` in hex.
 ///
 /// This is computed by the node, not declared by you. It is how anyone checks
 /// that a deployed contract is the code you published.
@@ -180,10 +180,10 @@ pub fn code_hash(wasm: &[u8]) -> String {
     blake3::hash(wasm).to_hex().to_string()
 }
 
-/// The weight the chain computes for this code, 1–5.
+/// The weight the chain computes for this code, 1 to 5.
 ///
-/// The same opcode analysis the node runs: instructions, loops, calls, memory
-/// operations and branches, scored and mapped onto 1–5. A module that does not
+/// The same opcode analysis the node runs. Instructions, loops, calls, memory
+/// operations and branches are scored and mapped onto 1 to 5. A module that does not
 /// parse scores 5.
 pub fn simulated_weight(wasm: &[u8]) -> u8 {
     use wasmparser::{Operator, Parser, Payload};
@@ -266,19 +266,19 @@ fn check_module(wasm: &[u8]) -> Result<()> {
             Ok(Payload::ExportSection(exports)) => {
                 for export in exports {
                     let export = export
-                        .map_err(|e| Error::Invalid(format!("the wasm does not parse: {e}")))?;
+                        .map_err(|e| Error::Invalid(format!("the wasm does not parse ({e})")))?;
                     if export.name == ENTRY_EXPORT && export.kind == ExternalKind::Func {
                         has_entry = true;
                     }
                 }
             }
             Ok(_) => {}
-            Err(e) => return Err(Error::Invalid(format!("the wasm does not parse: {e}"))),
+            Err(e) => return Err(Error::Invalid(format!("the wasm does not parse ({e})"))),
         }
     }
     if !has_entry {
         return Err(Error::Invalid(format!(
-            "the wasm has no '{ENTRY_EXPORT}' export; contracts built on retium-contract get it from entrypoint!"
+            "the wasm has no '{ENTRY_EXPORT}' export. Contracts built on retium-contract get it from entrypoint!"
         )));
     }
     Ok(())
@@ -293,7 +293,7 @@ pub struct Preflight {
     pub simulated_weight: u8,
     /// True when the wasm carries its own RCP-1 metadata.
     pub embedded: bool,
-    /// The record the chain will store: the embedded metadata (or the
+    /// The record the chain will store, meaning the embedded metadata (or the
     /// minimal fallback) with the deploy request's fields applied over it.
     pub metadata: Metadata,
 }
@@ -301,17 +301,17 @@ pub struct Preflight {
 /// Run every check the chain runs on a deploy that does not need the chain.
 ///
 /// `deploy_metadata` is the `metadata` object you send with the deploy, if
-/// any. Its fields override the embedded ones the way the node applies them:
-/// `name` replaces `rcp_type`; `traits`, `capabilities`, `weight` and
-/// `version` replace theirs; `symbol` and `decimals` are added as
-/// `symbol:` / `decimals:` traits.
+/// any. Its fields override the embedded ones the way the node applies them.
+/// `name` replaces `rcp_type`. `traits`, `capabilities`, `weight` and
+/// `version` replace theirs. `symbol` and `decimals` are added as
+/// `symbol:` and `decimals:` traits.
 ///
-/// Not checked here, because it needs the chain: that an `evolves_from`
-/// parent exists and was deployed by you, and that the id is not taken.
+/// Two things need the chain and are not checked here. An `evolves_from`
+/// parent must exist and be deployed by you, and the id must not be taken.
 pub fn preflight(wasm: &[u8], deploy_metadata: Option<&serde_json::Value>) -> Result<Preflight> {
     if wasm.len() > MAX_WASM_BYTES {
         return Err(Error::Invalid(format!(
-            "contract is {} bytes; the limit is {} ({} KiB). Build with --release and strip debug info",
+            "contract is {} bytes, the limit is {} ({} KiB). Build with --release and strip debug info",
             wasm.len(),
             MAX_WASM_BYTES,
             MAX_WASM_BYTES / 1024
@@ -329,7 +329,7 @@ pub fn preflight(wasm: &[u8], deploy_metadata: Option<&serde_json::Value>) -> Re
         let len = meta.to_string().len();
         if len > MAX_DEPLOY_METADATA_BYTES {
             return Err(Error::Invalid(format!(
-                "deploy metadata is {len} bytes; the limit is {MAX_DEPLOY_METADATA_BYTES}"
+                "deploy metadata is {len} bytes, the limit is {MAX_DEPLOY_METADATA_BYTES}"
             )));
         }
     }
@@ -345,8 +345,8 @@ pub fn preflight(wasm: &[u8], deploy_metadata: Option<&serde_json::Value>) -> Re
     // 4 or 5.
     if deploy_metadata.is_none() && simulated + 1 < DEPLOY_WEIGHT {
         return Err(Error::Invalid(format!(
-            "the chain scores this code at weight {simulated}; a deploy without metadata is weight {DEPLOY_WEIGHT}, \
-             which only code scoring 4 or 5 may use. Send deploy metadata with \"weight\": {simulated}"
+            "the chain scores this code at weight {simulated}. A deploy without metadata is weight {DEPLOY_WEIGHT}, \
+             which only code scoring 4 or 5 may use. Send deploy metadata with weight {simulated}"
         )));
     }
 
@@ -391,7 +391,7 @@ pub fn preflight(wasm: &[u8], deploy_metadata: Option<&serde_json::Value>) -> Re
     metadata.validate()?;
     if metadata.weight < simulated || metadata.weight > simulated + 1 {
         return Err(Error::Invalid(format!(
-            "declared weight {} does not fit this code: the chain scores it at {simulated}, \
+            "declared weight {} does not fit this code. The chain scores it at {simulated}, \
              so the weight must be {simulated}{}",
             metadata.weight,
             if simulated < 5 {
@@ -469,7 +469,7 @@ fn apply_deploy_metadata(meta: &mut Metadata, user: &serde_json::Value) -> Resul
         meta.traits.push(format!("decimals:{d}"));
     }
     if let Some(weight) = user.get("weight").and_then(|v| v.as_u64()) {
-        // The node stores it as one byte: a larger number wraps there and is
+        // The node stores it as one byte. A larger number wraps there and is
         // refused here.
         meta.weight = u8::try_from(weight).unwrap_or(u8::MAX);
     }
@@ -555,7 +555,7 @@ pub fn check_call(method: &str, args: &[String]) -> Result<()> {
     }
     if args.len() == 1 && args[0].is_empty() {
         return Err(Error::Invalid(
-            "a single empty argument reaches the contract as no arguments; pass none instead"
+            "a single empty argument reaches the contract as no arguments, pass none instead"
                 .into(),
         ));
     }
@@ -564,7 +564,7 @@ pub fn check_call(method: &str, args: &[String]) -> Result<()> {
 
 /// Check a free read's method and arguments: [`check_call`], and every
 /// character must travel as-is in a URL, because the read endpoint does not
-/// decode one. Allowed: letters, digits and `- _ . ~ :`.
+/// decode one. Letters, digits and `- _ . ~ :` are allowed.
 ///
 /// For anything else use [`crate::rpc::Client::view`], which carries
 /// arguments as JSON.
@@ -573,7 +573,7 @@ pub fn check_query(method: &str, args: &[String]) -> Result<()> {
     for arg in args {
         if !arg.bytes().all(url_raw_safe) {
             return Err(Error::Invalid(format!(
-                "argument {arg:?} cannot be sent in a free read: use letters, digits and - _ . ~ : only, \
+                "argument {arg:?} cannot be sent in a free read. Use letters, digits and - _ . ~ : only, \
                  or Client::view"
             )));
         }
@@ -600,19 +600,19 @@ mod tests {
 
     const FULL: &str = r#"{"rcp_type":"token","traits":["fungible"],"capabilities":["execute"],"lockable_fields":[],"evolves_from":"","weight":5,"version":"v1.0.0"}"#;
 
-    /// A minimal valid module: one exported `on_use` function, and `meta` in a
+    /// A minimal valid module with one exported `on_use` function, and `meta` in a
     /// custom section so the marker sits inside the module.
     fn module(meta: Option<&str>) -> Vec<u8> {
         let mut m = b"\0asm\x01\0\0\0".to_vec();
-        // type section: one func type () -> ()
+        // type section, one func type () -> ()
         m.extend_from_slice(&[0x01, 0x04, 0x01, 0x60, 0x00, 0x00]);
-        // function section: one function of type 0
+        // function section, one function of type 0
         m.extend_from_slice(&[0x03, 0x02, 0x01, 0x00]);
-        // export section: "on_use" func 0
+        // export section, "on_use" func 0
         m.extend_from_slice(&[0x07, 0x0a, 0x01, 0x06]);
         m.extend_from_slice(b"on_use");
         m.extend_from_slice(&[0x00, 0x00]);
-        // code section: one body, no locals, `end`
+        // code section, one body, no locals, `end`
         m.extend_from_slice(&[0x0a, 0x04, 0x01, 0x02, 0x00, 0x0b]);
         if let Some(meta) = meta {
             let mut payload = vec![4u8];

@@ -10,7 +10,7 @@
 //!
 //! Submitting is not the same as settled. Wait for
 //! [`Client::wait_for_final`](crate::rpc::Client::wait_for_final) before you
-//! treat a transfer as done, and expect [`Error::Busy`] now and then: it means
+//! treat a transfer as done, and expect [`Error::Busy`] now and then. It means
 //! "ask again in a moment", not "failed".
 
 use serde_json::json;
@@ -69,7 +69,7 @@ async fn context(client: &Client, address: &str) -> Result<Context> {
             balance_claim: w.balance_atomic()?,
         }),
         None => Err(Error::Invalid(format!(
-            "the chain has no record of {address}: it needs funds before it can send anything"
+            "the chain has no record of {address}, it needs funds before it can send anything"
         ))),
     }
 }
@@ -122,7 +122,7 @@ pub async fn transfer_with(
 /// Deploy a contract.
 ///
 /// `metadata` is the optional JSON object the node stores with the contract
-/// (`name`, `symbol`, …). It is part of the contract id, so the same code with
+/// (`name`, `symbol` and so on). It is part of the contract id, so the same code with
 /// different metadata is a different contract.
 ///
 /// Runs [`contract::preflight`] first, so a deploy the chain would refuse
@@ -173,13 +173,13 @@ pub async fn deploy_with(
 }
 
 /// Call a contract method that changes state. `value_rtm` attaches RTM to the
-/// call; pass `None` for a call that sends nothing.
+/// call. Pass `None` for a call that sends nothing.
 ///
-/// A contract can never take RTM out of your wallet by itself: the only money
+/// A contract can never take RTM out of your wallet by itself. The only money
 /// it receives from you is what you attach here, and you sign that amount.
 ///
 /// The method and arguments are checked with [`contract::check_call`] before
-/// anything is signed: the chain joins arguments with commas, so an argument
+/// anything is signed. The chain joins arguments with commas, so an argument
 /// holding `,` `(` `)` or `::` is refused rather than split.
 pub async fn call(
     client: &Client,
@@ -202,7 +202,7 @@ pub async fn call(
 }
 
 /// [`call`] with chosen options (network, gas coin).
-// One parameter per thing the chain signs; grouping them would hide what is
+// One parameter per thing the chain signs. Grouping them would hide what is
 // covered by the signature.
 #[allow(clippy::too_many_arguments)]
 pub async fn call_with(

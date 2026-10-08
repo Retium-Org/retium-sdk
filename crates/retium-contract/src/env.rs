@@ -1,8 +1,8 @@
 //! What a contract can learn about where it is running.
 //!
-//! There is no wall clock and no randomness here, on purpose: every keeper runs
+//! There is no wall clock and no randomness here, on purpose. Every keeper runs
 //! your code and must reach the same answer. Block height and block time are
-//! agreed by the chain, so they are safe to use; the system clock of whichever
+//! agreed by the chain, so they are safe to use. The system clock of whichever
 //! machine ran you is not available at all.
 
 use alloc::format;
@@ -32,7 +32,8 @@ pub fn block_time_ms() -> i64 {
     unsafe { host::get_block_time() }
 }
 
-/// The code hash of a deployed contract: what it is, not what it says it is.
+/// The code hash of a deployed contract. It tells you what the code is, not
+/// what the contract says it is.
 pub fn code_hash_of(contract: &str) -> Result<String, Error> {
     read_string(
         |out, max| unsafe {
@@ -57,7 +58,10 @@ pub fn version_of(contract: &str) -> Result<String, Error> {
 /// Declare this contract's version. At most 64 bytes.
 pub fn set_version(version: &str) -> Result<(), Error> {
     if version.is_empty() || version.len() > 64 {
-        return Err(format!("version must be 1–64 bytes, got {}", version.len()));
+        return Err(format!(
+            "version must be 1 to 64 bytes, got {}",
+            version.len()
+        ));
     }
     let rc = unsafe { host::set_contract_version(version.as_ptr(), version.len() as i32) };
     if rc < 0 {

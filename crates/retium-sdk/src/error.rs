@@ -2,9 +2,9 @@
 //!
 //! Two of these matter when you submit a transaction:
 //!
-//! * [`Error::Refused`]: the node looked at it and said no. Sending the same
-//!   bytes again will not help; fix the transaction.
-//! * [`Error::Busy`]: the node could not take it right now. The same
+//! * [`Error::Refused`] means the node looked at it and said no. Sending the
+//!   same bytes again will not help, so fix the transaction.
+//! * [`Error::Busy`] means the node could not take it right now. The same
 //!   transaction may well succeed a moment later.
 
 /// Anything that can go wrong locally or at the node.
@@ -28,7 +28,7 @@ pub enum Error {
     /// A key file from before the post-quantum migration.
     #[error(
         "this is a pre-2026 32-byte key file. Retium now uses ML-DSA-44 keys \
-         (37-byte RTSK files); re-wrap the same seed with `retium key import --seed <hex>`"
+         (37-byte RTSK files). Re-wrap the same seed with `retium key import --seed <hex>`"
     )]
     LegacyKeyFile,
 
@@ -41,11 +41,11 @@ pub enum Error {
     InvalidAmount(String),
 
     /// The node refused this transaction. A definitive answer.
-    #[error("the node refused this transaction: {0}")]
+    #[error("the node refused this transaction ({0})")]
     Refused(String),
 
-    /// The node is busy or mid-handover; try the same transaction again shortly.
-    #[error("the node is busy, try again shortly: {0}")]
+    /// The node is busy or mid-handover. Try the same transaction again shortly.
+    #[error("the node is busy, try again shortly ({0})")]
     Busy(String),
 
     /// Checked locally and not sent. The message says what to change.
@@ -53,7 +53,7 @@ pub enum Error {
     Invalid(String),
 
     /// Any other answer from the node.
-    #[error("node error (HTTP {status}): {body}")]
+    #[error("node error HTTP {status} ({body})")]
     Node {
         /// HTTP status code.
         status: u16,
@@ -62,11 +62,11 @@ pub enum Error {
     },
 
     /// The request never got an answer.
-    #[error("could not reach the node: {0}")]
+    #[error("could not reach the node ({0})")]
     Transport(String),
 
     /// The answer did not have the shape this client expects.
-    #[error("unexpected answer from the node: {0}")]
+    #[error("unexpected answer from the node ({0})")]
     Unexpected(String),
 
     /// A local file problem.
@@ -99,6 +99,6 @@ mod tests {
     #[test]
     fn a_legacy_key_file_says_what_to_do_about_it() {
         let message = Error::LegacyKeyFile.to_string();
-        assert!(message.contains("re-wrap"), "{message}");
+        assert!(message.contains("Re-wrap"), "{message}");
     }
 }

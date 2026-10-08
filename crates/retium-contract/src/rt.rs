@@ -1,6 +1,6 @@
-//! Runtime bits a wasm contract needs: an allocator and a panic handler.
+//! The allocator and panic handler a wasm contract needs.
 //!
-//! The panic handler traps immediately. That is deliberate: a trap rolls the
+//! The panic handler traps immediately. That is deliberate. A trap rolls the
 //! whole call back, while a handler that loops would burn the caller's fuel to
 //! the last drop before failing anyway.
 

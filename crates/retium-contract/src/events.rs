@@ -1,7 +1,7 @@
-//! Events: how a contract tells the outside world what happened.
+//! Events tell the outside world what a contract did.
 //!
 //! An event is a type name and a JSON payload. Indexers, explorers and wallets
-//! read them; your contract cannot read them back, so never use an event as
+//! read them. Your contract cannot read them back, so never use an event as
 //! storage.
 //!
 //! Always build payloads with [`json_string`] (or [`json_object`]). A quote or
@@ -18,13 +18,13 @@ use crate::{Error, MAX_EVENT_DATA, MAX_EVENT_TYPE};
 pub fn emit(event_type: &str, data: &str) -> Result<(), Error> {
     if event_type.is_empty() || event_type.len() > MAX_EVENT_TYPE {
         return Err(format!(
-            "event type must be 1–{MAX_EVENT_TYPE} bytes, got {}",
+            "event type must be 1 to {MAX_EVENT_TYPE} bytes, got {}",
             event_type.len()
         ));
     }
     if data.len() > MAX_EVENT_DATA {
         return Err(format!(
-            "event data is {} bytes; the limit is {MAX_EVENT_DATA}",
+            "event data is {} bytes, the limit is {MAX_EVENT_DATA}",
             data.len()
         ));
     }

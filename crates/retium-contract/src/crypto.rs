@@ -27,7 +27,7 @@ pub fn sha256_hex(data: &[u8]) -> Result<String, Error> {
     Ok(out)
 }
 
-/// Check an ML-DSA-44 signature: the same scheme Retium accounts use.
+/// Check an ML-DSA-44 signature, the same scheme Retium accounts use.
 ///
 /// This is one of the most expensive things a contract can do. Use it only when
 /// you genuinely need to verify something signed off-chain. A call's `caller`
@@ -51,7 +51,7 @@ pub fn verify_signature(
         1 => Ok(true),
         0 => Ok(false),
         _ => Err(String::from(
-            "signature check failed: wrong signature or key length",
+            "signature check failed, wrong signature or key length",
         )),
     }
 }

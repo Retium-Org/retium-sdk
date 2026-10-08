@@ -1,7 +1,7 @@
 //! A counter, written the way a Retium contract should be written.
 //!
 //! It is deliberately small. Read it once and you have seen every part of the
-//! model: one entry point, state in storage, checks before writes, events for
+//! model. One entry point, state in storage, checks before writes, events for
 //! the outside world, and an owner that is recorded on first use rather than
 //! hardcoded.
 //!
@@ -32,12 +32,12 @@ use retium_contract::{entrypoint, error, events, ok, storage, Call, Reply};
 entrypoint!(handle);
 
 // What the chain, wallets and explorers read about this contract. All seven
-// fields are required; `retium deploy --dry-run` checks them.
+// fields are required and `retium deploy --dry-run` checks them.
 retium_contract::rcp_metadata!(
     r#"{"rcp_type":"counter","traits":["demo"],"capabilities":["execute"],"lockable_fields":[],"evolves_from":"","weight":5,"version":"v1.0.0"}"#
 );
 
-/// Storage keys. Keep them in one place: they are your schema.
+/// Storage keys. Keep them in one place, they are your schema.
 const OWNER: &str = "owner";
 const COUNT: &str = "count";
 
@@ -53,7 +53,7 @@ pub fn handle(call: Call) -> Reply {
         "owner" => ok(&storage::get_or(OWNER, "")?),
         "reset" => reset(&call),
         other => error(&format!(
-            "unknown action '{other}': try init, bump, value, owner or reset"
+            "unknown action '{other}', try init, bump, value, owner or reset"
         )),
     }
 }
@@ -98,7 +98,7 @@ pub fn bump(call: &Call) -> Reply {
 }
 
 /// Only the owner may reset. `caller` is proven by the chain, so comparing it
-/// is a complete check; no signature handling of your own is needed.
+/// is a complete check. No signature handling of your own is needed.
 pub fn reset(call: &Call) -> Reply {
     let owner = storage::get_or(OWNER, "")?;
     if owner.is_empty() {

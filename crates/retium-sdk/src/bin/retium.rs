@@ -1,6 +1,6 @@
-//! `retium`: a command-line tool for the Retium blockchain.
+//! `retium`, a command-line tool for the Retium blockchain.
 //!
-//! Everything it does, the library does too: this is a thin front end over
+//! Everything it does, the library does too. This is a thin front end over
 //! [`retium_sdk`], not a separate implementation.
 //!
 //! It is meant to be scriptable. Failures print to stderr and exit non-zero,
@@ -26,17 +26,17 @@ struct Cli {
     #[arg(long, env = "RETIUM_RPC", default_value = rpc::PUBLIC_RPC, global = true)]
     rpc: String,
 
-    /// API key for writes. Prefer the environment variable: a key on the
+    /// API key for writes. Prefer the environment variable, because a key on the
     /// command line is visible to every process on the machine.
     #[arg(long, env = "RETIUM_API_KEY", hide_env_values = true, global = true)]
     api_key: Option<String>,
 
-    /// Chain id to sign for: mainnet, testnet or devnet. Every network signs
-    /// as devnet until mainnet, the public testnet included; leave it alone.
+    /// Chain id to sign for (mainnet, testnet or devnet). Every network signs
+    /// as devnet until mainnet, the public testnet included, so leave it alone.
     #[arg(long, env = "RETIUM_CHAIN", default_value = "devnet", global = true)]
     chain: String,
 
-    /// Coin to pay gas in: RTM, or RTD (Retium Dollar, 1.5x the RTM fee).
+    /// Coin to pay gas in, RTM or RTD (Retium Dollar, 1.5x the RTM fee).
     #[arg(long, env = "RETIUM_FEE", default_value = "RTM", global = true)]
     fee: String,
 
@@ -59,7 +59,7 @@ enum Command {
     Key(KeyCommand),
     /// Show an account's balance and next nonce.
     Balance {
-        /// Address to look up; defaults to your key's address.
+        /// Address to look up. Defaults to your key's address.
         address: Option<String>,
     },
     /// Send RTM.
@@ -73,7 +73,7 @@ enum Command {
     Deploy {
         /// Path to the .wasm file.
         wasm: PathBuf,
-        /// Path to a JSON file of deploy metadata (name, symbol, …).
+        /// Path to a JSON file of deploy metadata (name, symbol and so on).
         #[arg(long)]
         metadata: Option<PathBuf>,
         /// Print the contract id and stop.
@@ -189,7 +189,7 @@ fn run(cli: Cli) -> retium_sdk::Result<String> {
         "RTD" => FEE_RTD,
         other => {
             return Err(Error::Invalid(format!(
-                "unknown gas coin '{other}': RTM or RTD"
+                "unknown gas coin '{other}', use RTM or RTD"
             )))
         }
     };
@@ -265,7 +265,7 @@ fn run(cli: Cli) -> retium_sdk::Result<String> {
                         let text = std::fs::read_to_string(path)
                             .map_err(|e| Error::Io(format!("{}: {e}", path.display())))?;
                         Some(serde_json::from_str::<serde_json::Value>(&text).map_err(|e| {
-                            Error::Invalid(format!("{}: not valid JSON: {e}", path.display()))
+                            Error::Invalid(format!("{} is not valid JSON ({e})", path.display()))
                         })?)
                     }
                     None => None,
@@ -476,7 +476,7 @@ fn key_command(
 
 fn load_key(path: Option<&std::path::Path>) -> retium_sdk::Result<SecretKey> {
     let path = path
-        .ok_or_else(|| Error::Io("no key file: pass --key <file> or set RETIUM_KEY".to_string()))?;
+        .ok_or_else(|| Error::Io("no key file, pass --key <file> or set RETIUM_KEY".to_string()))?;
     SecretKey::read_key_file(path)
 }
 

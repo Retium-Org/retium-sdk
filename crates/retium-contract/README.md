@@ -18,4 +18,4 @@ pub fn handle(call: Call) -> Reply {
 
 Build with `--target wasm32-unknown-unknown`. Off-chain the host functions are stubbed, so handlers can be unit-tested with plain `cargo test`.
 
-Read [Writing contracts](https://github.com/Retium-Org/retium-sdk/blob/main/docs/04-writing-contracts.md) before your first deploy — the model has a few rules that decide whether a contract works at all. Licence: Apache-2.0.
+Read [Writing contracts](https://github.com/Retium-Org/retium-sdk/blob/main/docs/04-writing-contracts.md) before your first deploy. The model has a few rules that decide whether a contract works at all. Licence: Apache-2.0.
