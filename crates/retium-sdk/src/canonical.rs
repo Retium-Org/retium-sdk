@@ -68,6 +68,8 @@ impl ChainId {
 pub const TREASURY: &str = "rete_treasury";
 /// Recipient written into a stake or unstake payload.
 pub const STAKE_POOL: &str = "STAKE_POOL";
+/// Recipient written into an API key payload.
+pub const API_KEY_REGISTRY: &str = "API_KEY_REGISTRY";
 
 /// The exact struct the node serialises with bincode before hashing. Field
 /// order is part of the format, so do not reorder.
@@ -237,6 +239,29 @@ impl CanonicalPayload {
             balance_claim,
             String::new(),
             [0u8; 32],
+            vec![sender.into(), TREASURY.into()],
+        )
+    }
+
+    /// Register, rename, revoke or upgrade a developer API key. `payload` is
+    /// the exact JSON text sent with the request, and `amount` is the tier
+    /// price for an upgrade, 0 otherwise.
+    pub fn api_key(
+        sender: &str,
+        payload: &str,
+        amount: u128,
+        nonce: u64,
+        balance_claim: u128,
+    ) -> Self {
+        Self::new(
+            "api_key",
+            sender,
+            API_KEY_REGISTRY,
+            amount,
+            nonce,
+            balance_claim,
+            String::new(),
+            *blake3::hash(payload.as_bytes()).as_bytes(),
             vec![sender.into(), TREASURY.into()],
         )
     }

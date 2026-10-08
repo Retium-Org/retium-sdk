@@ -319,6 +319,115 @@ async fn stake_inner(
     client.submit(&path, &body).await
 }
 
+/// A developer API key made by [`register_api_key`].
+#[derive(Debug, Clone)]
+pub struct NewApiKey {
+    /// The secret to send as `X-API-Key`. Only its hash goes on chain, so this
+    /// is the one time you see it. Keep it like a password.
+    pub secret: String,
+    /// `blake3(secret)` in hex, the id the chain knows the key by.
+    pub key_hash: String,
+    /// The registering transaction.
+    pub submitted: Submitted,
+}
+
+/// The hash the chain stores for an API key secret.
+pub fn api_key_hash(secret: &str) -> String {
+    blake3::hash(secret.as_bytes()).to_hex().to_string()
+}
+
+/// Make a new developer API key on the free tier and register its hash.
+///
+/// The key works once the transaction is final. `label` is 1 to 32
+/// characters and is stored on chain in plain text. The request itself goes
+/// to an endpoint that wants an API key, so the client needs one already.
+pub async fn register_api_key(client: &Client, key: &SecretKey, label: &str) -> Result<NewApiKey> {
+    let label = label.trim();
+    if label.is_empty() || label.chars().count() > 32 || label.chars().any(char::is_control) {
+        return Err(Error::Invalid(
+            "an API key label is 1 to 32 characters with no control characters".into(),
+        ));
+    }
+    let mut raw = [0u8; 32];
+    rand::RngCore::fill_bytes(&mut rand::rngs::OsRng, &mut raw);
+    let secret = format!("rk_{}", hex::encode(raw));
+    let key_hash = api_key_hash(&secret);
+    let payload = json!({"op": "register", "key_hash": key_hash, "label": label}).to_string();
+    let submitted = api_key_op(client, key, &payload, 0).await?;
+    Ok(NewApiKey {
+        secret,
+        key_hash,
+        submitted,
+    })
+}
+
+/// Revoke an API key by its hash. A revoked key never works again.
+pub async fn revoke_api_key(client: &Client, key: &SecretKey, key_hash: &str) -> Result<Submitted> {
+    check_key_hash(key_hash)?;
+    let payload = json!({"op": "revoke", "key_hash": key_hash}).to_string();
+    api_key_op(client, key, &payload, 0).await
+}
+
+/// Buy a paid tier for 30 days, or extend it. The price is read from the
+/// node's tier table and sent to the treasury.
+pub async fn upgrade_api_key(
+    client: &Client,
+    key: &SecretKey,
+    key_hash: &str,
+    tier: &str,
+) -> Result<Submitted> {
+    check_key_hash(key_hash)?;
+    let tiers = client.api_tiers().await?;
+    let price = tiers
+        .tiers
+        .iter()
+        .find(|t| t.name == tier)
+        .map(|t| amount::parse_atomic(&t.price_atomic))
+        .transpose()?
+        .filter(|p| *p > 0)
+        .ok_or_else(|| Error::Invalid(format!("'{tier}' is not a paid tier")))?;
+    let payload = json!({"op": "tier", "key_hash": key_hash, "tier": tier}).to_string();
+    api_key_op(client, key, &payload, price).await
+}
+
+fn check_key_hash(key_hash: &str) -> Result<()> {
+    if key_hash.len() != 64
+        || !key_hash
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+    {
+        return Err(Error::Invalid(format!(
+            "{key_hash} is not a key hash (64 lowercase hex characters)"
+        )));
+    }
+    Ok(())
+}
+
+async fn api_key_op(
+    client: &Client,
+    key: &SecretKey,
+    payload: &str,
+    amount: u128,
+) -> Result<Submitted> {
+    let from = key.address();
+    let ctx = context(client, &from).await?;
+    // The hash covers the exact payload text, so the same string is signed
+    // and sent.
+    let signed = CanonicalPayload::api_key(&from, payload, amount, ctx.nonce, ctx.balance_claim);
+    let body = json!({
+        "address": from,
+        "payload": payload,
+        "amount": amount.to_string(),
+        "nonce": ctx.nonce,
+        "sender_balance_claim": ctx.balance_claim.to_string(),
+        "declared": signed.declared,
+        "fee_currency": signed.fee_currency_name(),
+        "signature": key.sign_hex(&signed.signing_hash()),
+        "public_key": key.public_key().to_hex(),
+    });
+    client.submit("/api/developer/key", &body).await
+}
+
 /// Minimal base64 (RFC 4648) so the SDK carries one less dependency.
 mod base64_lite {
     const ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";

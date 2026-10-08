@@ -50,11 +50,65 @@ pub struct Submitted {
     #[serde(default)]
     pub status: Option<String>,
     /// The block it went into, when the node says so.
-    #[serde(default)]
+    #[serde(default, deserialize_with = "number_or_text")]
     pub block_id: Option<u64>,
     /// Present on a deploy.
     #[serde(default)]
     pub contract_id: Option<String>,
+}
+
+/// Some endpoints send a block id as a number and some as text.
+fn number_or_text<'de, D: serde::Deserializer<'de>>(
+    d: D,
+) -> std::result::Result<Option<u64>, D::Error> {
+    Ok(match Option::<serde_json::Value>::deserialize(d)? {
+        Some(serde_json::Value::Number(n)) => n.as_u64(),
+        Some(serde_json::Value::String(s)) => s.parse().ok(),
+        _ => None,
+    })
+}
+
+/// One row of the API key price list.
+#[derive(Deserialize, Debug, Clone)]
+pub struct ApiTier {
+    /// `free`, `pro` or `enterprise`.
+    pub name: String,
+    /// Requests allowed per day.
+    pub per_day: u64,
+    /// Requests allowed per second.
+    pub per_sec: u64,
+    /// Price for one period in RTM.
+    pub price_rtm: String,
+    /// The same price in atomic units.
+    pub price_atomic: String,
+}
+
+/// The API key price list.
+#[derive(Deserialize, Debug, Clone)]
+pub struct ApiTiers {
+    /// How long a paid tier lasts.
+    pub period_days: u64,
+    /// The tiers, cheapest first.
+    pub tiers: Vec<ApiTier>,
+}
+
+/// A developer API key as the chain records it. The secret is never stored.
+#[derive(Deserialize, Debug, Clone)]
+pub struct ApiKeyInfo {
+    /// `blake3(secret)` in hex.
+    pub key_hash: String,
+    /// Your label for it.
+    pub label: String,
+    /// The tier in force now.
+    pub tier: String,
+    /// Unix time a paid tier runs out, 0 if none was bought.
+    #[serde(default)]
+    pub tier_until: u64,
+    /// True once revoked.
+    pub revoked: bool,
+    /// Requests counted today on the node that answered.
+    #[serde(default)]
+    pub used_today: u64,
 }
 
 /// How far a transaction has got.
@@ -84,6 +138,33 @@ impl Finality {
     pub fn is_final(self) -> bool {
         matches!(self, Self::HardFinal | Self::Rejected)
     }
+}
+
+/// What became of a deploy or a call once it was final.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Outcome {
+    /// The contract ran and accepted it.
+    Ok,
+    /// The contract or the chain refused it, with the reason. The fee is
+    /// still paid.
+    Failed(String),
+    /// Final, but the contract has not run yet.
+    Pending,
+    /// Not a deploy or a call, or not final yet.
+    NotApplicable,
+}
+
+/// A transaction as the node reports it.
+#[derive(Debug, Clone)]
+pub struct TxStatus {
+    /// The transaction's id.
+    pub tx_id: String,
+    /// `transfer`, `deploy`, `call` and so on.
+    pub action: String,
+    /// How far it has got.
+    pub finality: Finality,
+    /// What the contract made of it.
+    pub outcome: Outcome,
 }
 
 /// A deployed contract's public record.
@@ -200,32 +281,82 @@ impl Client {
 
     /// How far a transaction has got.
     pub async fn finality(&self, tx_id: &str) -> Result<Finality> {
+        Ok(self
+            .transaction(tx_id)
+            .await?
+            .map(|t| t.finality)
+            .unwrap_or(Finality::Pending))
+    }
+
+    /// A transaction's progress and, for a deploy or a call, its result.
+    /// `None` while the node has not indexed it yet.
+    pub async fn transaction(&self, tx_id: &str) -> Result<Option<TxStatus>> {
         #[derive(Deserialize)]
         struct Tx {
             #[serde(default)]
             finality: Option<String>,
+            #[serde(default)]
+            exec_status: Option<String>,
+            #[serde(default)]
+            exec_error: Option<String>,
+            #[serde(default)]
+            rejection_reason: Option<String>,
+            #[serde(default)]
+            action: Option<String>,
         }
         crate::contract::check_path_segment("transaction", tx_id)?;
         let tx: Option<Tx> = self.get(&format!("/api/transaction/{tx_id}")).await?;
-        Ok(tx
-            .and_then(|t| t.finality)
-            .map(|f| Finality::parse(&f))
-            .unwrap_or(Finality::Pending))
+        Ok(tx.map(|t| {
+            let finality = t
+                .finality
+                .as_deref()
+                .map(Finality::parse)
+                .unwrap_or(Finality::Pending);
+            let outcome = match t.exec_status.as_deref() {
+                Some("ok") => Outcome::Ok,
+                Some("failed") => Outcome::Failed(t.exec_error.clone().unwrap_or_default()),
+                Some("pending") => Outcome::Pending,
+                _ if finality == Finality::Rejected => {
+                    Outcome::Failed(t.rejection_reason.clone().unwrap_or_default())
+                }
+                _ => Outcome::NotApplicable,
+            };
+            TxStatus {
+                tx_id: tx_id.to_string(),
+                action: t.action.unwrap_or_default(),
+                finality,
+                outcome,
+            }
+        }))
     }
 
     /// Wait until a transaction is settled or refused.
     ///
-    /// Polls gently. Give it a timeout you are happy to block for.
+    /// Polls gently. Give it a timeout you are happy to block for. For a
+    /// deploy or a call, use [`Client::wait_for_result`] to learn whether
+    /// the contract accepted it.
     pub async fn wait_for_final(&self, tx_id: &str, timeout: Duration) -> Result<Finality> {
+        self.wait(tx_id, timeout, false).await.map(|t| t.finality)
+    }
+
+    /// Wait until a transaction is settled and, for a deploy or a call, until
+    /// its result is known. A call can be final and still have failed, so
+    /// check [`TxStatus::outcome`].
+    pub async fn wait_for_result(&self, tx_id: &str, timeout: Duration) -> Result<TxStatus> {
+        self.wait(tx_id, timeout, true).await
+    }
+
+    async fn wait(&self, tx_id: &str, timeout: Duration, result: bool) -> Result<TxStatus> {
         let start = std::time::Instant::now();
         loop {
-            let f = self.finality(tx_id).await?;
-            if f.is_final() {
-                return Ok(f);
+            if let Some(t) = self.transaction(tx_id).await? {
+                if t.finality.is_final() && !(result && t.outcome == Outcome::Pending) {
+                    return Ok(t);
+                }
             }
             if start.elapsed() >= timeout {
                 return Err(Error::Unexpected(format!(
-                    "{tx_id} was still {f:?} after {}s",
+                    "{tx_id} was not settled after {}s",
                     timeout.as_secs()
                 )));
             }
@@ -286,6 +417,27 @@ impl Client {
             "nonce": 0,
         });
         self.post("/api/contract/call", &body).await
+    }
+
+    /// The API key price list. No API key needed.
+    pub async fn api_tiers(&self) -> Result<ApiTiers> {
+        self.get("/api/developer/tiers")
+            .await?
+            .ok_or_else(|| Error::Unexpected("no answer from /api/developer/tiers".into()))
+    }
+
+    /// The API keys a wallet has registered. No API key needed.
+    pub async fn api_keys(&self, address: &str) -> Result<Vec<ApiKeyInfo>> {
+        if !crate::address::is_valid(address) {
+            return Err(Error::InvalidAddress(address.to_string()));
+        }
+        #[derive(Deserialize)]
+        struct Keys {
+            #[serde(default)]
+            keys: Vec<ApiKeyInfo>,
+        }
+        let keys: Option<Keys> = self.get(&format!("/api/developer/keys/{address}")).await?;
+        Ok(keys.map(|k| k.keys).unwrap_or_default())
     }
 
     /// The network's health.

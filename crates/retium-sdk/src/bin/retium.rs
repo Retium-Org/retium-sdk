@@ -133,6 +133,9 @@ enum Command {
     },
     /// Show the network's status.
     Health,
+    /// Developer API keys.
+    #[command(subcommand, name = "api-key")]
+    ApiKey(ApiKeyCommand),
 }
 
 #[derive(Subcommand)]
@@ -155,6 +158,32 @@ enum KeyCommand {
         /// The seed, as 64 hex characters.
         #[arg(long)]
         seed: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum ApiKeyCommand {
+    /// Make a free API key and register it. The secret is shown once.
+    New {
+        /// A name for the key, 1 to 32 characters, stored on chain.
+        label: String,
+    },
+    /// List your account's keys and the price list.
+    List {
+        /// Address to look up. Defaults to your key's address.
+        address: Option<String>,
+    },
+    /// Revoke a key by its hash. It never works again.
+    Revoke {
+        /// The key hash from `retium api-key list`.
+        key_hash: String,
+    },
+    /// Buy or extend a paid tier for a key.
+    Upgrade {
+        /// The key hash from `retium api-key list`.
+        key_hash: String,
+        /// pro or enterprise.
+        tier: String,
     },
 }
 
@@ -343,18 +372,43 @@ fn run(cli: Cli) -> retium_sdk::Result<String> {
             }
 
             Command::Tx { tx_id, wait } => {
-                let finality = if wait {
-                    client
-                        .wait_for_final(&tx_id, std::time::Duration::from_secs(600))
-                        .await?
+                let status = if wait {
+                    Some(
+                        client
+                            .wait_for_result(&tx_id, std::time::Duration::from_secs(600))
+                            .await?,
+                    )
                 } else {
-                    client.finality(&tx_id).await?
+                    client.transaction(&tx_id).await?
                 };
-                Ok(out(
-                    cli.json,
-                    &serde_json::json!({"tx_id": tx_id, "finality": format!("{finality:?}")}),
-                    &format!("{tx_id} is {finality:?}"),
-                ))
+                let Some(t) = status else {
+                    return Ok(out(
+                        cli.json,
+                        &serde_json::json!({"tx_id": tx_id, "finality": "Pending"}),
+                        &format!("{tx_id} is not indexed yet"),
+                    ));
+                };
+                let (result, reason) = match &t.outcome {
+                    rpc::Outcome::Ok => ("ok", None),
+                    rpc::Outcome::Failed(r) => ("failed", Some(r.clone())),
+                    rpc::Outcome::Pending => ("pending", None),
+                    rpc::Outcome::NotApplicable => ("", None),
+                };
+                let mut text = format!("{tx_id} is {:?}", t.finality);
+                if !result.is_empty() {
+                    text.push_str(&format!(", result {result}"));
+                }
+                if let Some(r) = &reason {
+                    text.push_str(&format!("\n  {r}"));
+                }
+                let json = serde_json::json!({
+                    "tx_id": tx_id, "action": t.action, "finality": format!("{:?}", t.finality),
+                    "result": if result.is_empty() { None } else { Some(result) }, "reason": reason,
+                });
+                if reason.is_some() {
+                    return Err(Error::Invalid(if cli.json { json.to_string() } else { text }));
+                }
+                Ok(out(cli.json, &json, &text))
             }
 
             Command::Contract { contract_id } => match client.contract(&contract_id).await? {
@@ -404,6 +458,86 @@ fn run(cli: Cli) -> retium_sdk::Result<String> {
                 } else {
                     Err(Error::Invalid(text))
                 }
+            }
+
+            Command::ApiKey(ApiKeyCommand::New { label }) => {
+                let key = load_key(cli.key.as_deref())?;
+                let made = tx::register_api_key(&client, &key, &label).await?;
+                Ok(out(
+                    cli.json,
+                    &serde_json::json!({
+                        "secret": made.secret,
+                        "key_hash": made.key_hash,
+                        "tx_id": made.submitted.tx_id,
+                    }),
+                    &format!(
+                        "new API key \"{label}\"\n  secret   {}\n  key hash {}\n  tx       {}\n\nThe secret is shown only now. Keep it like a password and pass it as\nRETIUM_API_KEY. It works once the transaction is final.",
+                        made.secret, made.key_hash, made.submitted.tx_id
+                    ),
+                ))
+            }
+
+            Command::ApiKey(ApiKeyCommand::List { address }) => {
+                let address = match address {
+                    Some(a) => a,
+                    None => load_key(cli.key.as_deref())?.address(),
+                };
+                let keys = client.api_keys(&address).await?;
+                let tiers = client.api_tiers().await?;
+                let mut text = format!("{address}\n");
+                if keys.is_empty() {
+                    text.push_str("  no API keys\n");
+                }
+                for k in &keys {
+                    text.push_str(&format!(
+                        "  {}  {:<10} {}{}\n",
+                        k.key_hash,
+                        k.tier,
+                        k.label,
+                        if k.revoked { " (revoked)" } else { "" }
+                    ));
+                }
+                text.push_str(&format!("\nprices for {} days\n", tiers.period_days));
+                for t in &tiers.tiers {
+                    text.push_str(&format!(
+                        "  {:<10} {:>10} a day, {:>4} a second, {} RTM\n",
+                        t.name, t.per_day, t.per_sec, t.price_rtm
+                    ));
+                }
+                let rows: Vec<_> = keys
+                    .iter()
+                    .map(|k| {
+                        serde_json::json!({
+                            "key_hash": k.key_hash, "label": k.label, "tier": k.tier,
+                            "tier_until": k.tier_until, "revoked": k.revoked, "used_today": k.used_today,
+                        })
+                    })
+                    .collect();
+                Ok(out(
+                    cli.json,
+                    &serde_json::json!({"address": address, "keys": rows}),
+                    text.trim_end(),
+                ))
+            }
+
+            Command::ApiKey(ApiKeyCommand::Revoke { key_hash }) => {
+                let key = load_key(cli.key.as_deref())?;
+                let sent = tx::revoke_api_key(&client, &key, &key_hash).await?;
+                Ok(out(
+                    cli.json,
+                    &serde_json::json!({"tx_id": sent.tx_id, "key_hash": key_hash}),
+                    &format!("revoking {key_hash}\n  tx {}", sent.tx_id),
+                ))
+            }
+
+            Command::ApiKey(ApiKeyCommand::Upgrade { key_hash, tier }) => {
+                let key = load_key(cli.key.as_deref())?;
+                let sent = tx::upgrade_api_key(&client, &key, &key_hash, &tier).await?;
+                Ok(out(
+                    cli.json,
+                    &serde_json::json!({"tx_id": sent.tx_id, "key_hash": key_hash, "tier": tier}),
+                    &format!("buying {tier} for {key_hash}\n  tx {}", sent.tx_id),
+                ))
             }
 
             Command::Health => {
