@@ -2,7 +2,7 @@
   "name": "Retium",
   "network": "public testnet",
   "coins_have_value": false,
-  "instructions": "SKILL.md",
+  "instructions": "AGENTS.md",
   "rpc": "https://rpc.retium.org",
   "chain_id_in_signatures": 3,
   "signature_scheme": "ML-DSA-44 (FIPS 204)",

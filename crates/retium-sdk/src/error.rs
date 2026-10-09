@@ -25,12 +25,12 @@ pub enum Error {
     #[error("could not read {0}")]
     BadEncoding(&'static str),
 
-    /// A key file from before the post-quantum migration.
+    /// A bare 32-byte seed where a key file was expected.
     #[error(
-        "this is a pre-2026 32-byte key file. Retium now uses ML-DSA-44 keys \
-         (37-byte RTSK files). Re-wrap the same seed with `retium key import --seed <hex>`"
+        "a key file is 37 bytes (RTSK, version, seed), this file is 32. \
+         Wrap a raw seed with `retium key import --seed <hex>`"
     )]
-    LegacyKeyFile,
+    RawSeedFile,
 
     /// The address is malformed or its checksum does not match.
     #[error("{0} is not a valid Retium address")]
@@ -97,8 +97,8 @@ mod tests {
     }
 
     #[test]
-    fn a_legacy_key_file_says_what_to_do_about_it() {
-        let message = Error::LegacyKeyFile.to_string();
-        assert!(message.contains("Re-wrap"), "{message}");
+    fn a_raw_seed_file_says_what_to_do_about_it() {
+        let message = Error::RawSeedFile.to_string();
+        assert!(message.contains("key import"), "{message}");
     }
 }

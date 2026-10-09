@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Please report security problems privately, not as a public issue. Use the contact route published at **[retium.org](https://retium.org)**.
+Please report security problems privately, not as a public issue. Email **security@retium.org**, or use the contact route published at [retium.org](https://retium.org).
 
 Include what you found, how to reproduce it, and what an attacker could do with it. Please give us reasonable time to fix an issue before publishing it.
 
@@ -12,7 +12,7 @@ This covers the SDK in this repository and the Retium network it talks to.
 
 * A secret key is used **only on your machine**. Signing is local. No key, seed or key file path is ever sent to a node.
 * The key is never printed or logged. `retium key new --show-seed` prints the seed once, because you asked for it.
-* The seed is wiped from memory when the key is dropped.
+* The seed and the signing key are wiped from memory when the key is dropped.
 * Key files are written with owner-only permissions on Unix, and the SDK refuses to overwrite an existing key file.
 * The SDK ships with no account, no key and no API key.
 

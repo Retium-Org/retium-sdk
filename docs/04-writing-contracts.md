@@ -42,7 +42,7 @@ A call gives you four things.
 
 ## Arguments
 
-A user's call reaches your contract as text of the form `contract::method(arg1,arg2)` and the chain splits it back apart. So an argument from a user cannot contain `,` `(` `)` or `::`, and a method name is letters, digits and `_`. The SDK refuses anything else before signing, rather than letting the arguments arrive changed.
+An argument from a user may not contain `,` `(` `)` or `::`, and a method name is letters, digits and `_`. The SDK checks this before signing.
 
 Need to pass structured data? Use several plain arguments, or encode it (hex, for example) and decode it in the contract.
 
@@ -79,7 +79,7 @@ if amount > limit {
 }
 ```
 
-`retium_contract::fail` does the same by trapping the module.
+`retium_contract::fail` undoes the call the same way by trapping the module, but a trap carries no message, so the user sees no reason. Use `error` when the reason matters.
 
 This changes when another contract calls you. The caller receives your error as an ordinary reply and decides what to do with it. If it carries on, your writes stay. So in a contract that other contracts call, check before you write, or use `fail`, which always undoes your writes and gives the caller an `Err`.
 

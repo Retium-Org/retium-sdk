@@ -55,4 +55,4 @@ RTM and RTD on the public test network have no value. Nobody should pay for them
 
 ## Reporting a problem
 
-Report security problems in this SDK or the network privately, through the contact route on [retium.org](https://retium.org). See [SECURITY.md](../SECURITY.md).
+Report security problems in this SDK or the network privately, by email to security@retium.org. See [SECURITY.md](../SECURITY.md).

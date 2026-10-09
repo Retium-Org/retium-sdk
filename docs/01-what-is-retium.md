@@ -50,7 +50,7 @@ You reach the network through one address, `https://rpc.retium.org`. You never a
 
 ## Blocks, ticks and finality
 
-Transactions go into blocks, and blocks belong to ticks. A tick is a round of work. Later ticks carry more blocks than earlier ones by design, so a slow tick is not a stuck chain.
+Transactions go into blocks, and blocks belong to ticks. A tick is a round of work. Later ticks carry more blocks than earlier ones.
 
 A transaction moves through these states.
 

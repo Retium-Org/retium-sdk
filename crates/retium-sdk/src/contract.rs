@@ -525,12 +525,8 @@ fn is_reserved_name(s: &str) -> bool {
 
 /// Check a method name and its arguments before they are signed.
 ///
-/// The chain carries a call as the text `contract::method(arg1,arg2)` and
-/// splits it back apart to run it, so an argument holding `,` `(` `)` or `::`
-/// would reach the contract as different arguments from the ones you passed,
-/// and your signature would still be valid for it. Refused here instead.
-/// Method names are letters, digits and `_`. A call with exactly one empty
-/// argument arrives as a call with none, so that is refused too.
+/// An argument may not hold `,` `(` `)` or `::`, and a method name is letters,
+/// digits and `_`. A call with exactly one empty argument is refused too.
 ///
 /// Need to pass structured data? Use several plain arguments, or encode it
 /// (hex, for example) and decode it in the contract.
@@ -547,7 +543,7 @@ pub fn check_call(method: &str, args: &[String]) -> Result<()> {
     for (i, arg) in args.iter().enumerate() {
         if arg.contains(',') || arg.contains('(') || arg.contains(')') || arg.contains("::") {
             return Err(Error::Invalid(format!(
-                "argument {} ({arg:?}) contains , ( ) or :: which the chain uses to separate a call; \
+                "argument {} ({arg:?}) contains , ( ) or ::, which are not allowed in an argument; \
                  split it into several arguments or encode it",
                 i + 1
             )));
@@ -555,8 +551,7 @@ pub fn check_call(method: &str, args: &[String]) -> Result<()> {
     }
     if args.len() == 1 && args[0].is_empty() {
         return Err(Error::Invalid(
-            "a single empty argument reaches the contract as no arguments, pass none instead"
-                .into(),
+            "a single empty argument is not allowed, pass no arguments instead".into(),
         ));
     }
     Ok(())

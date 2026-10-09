@@ -109,6 +109,10 @@ pub fn error(message: &str) -> Reply {
 /// the call made, including those of any contract it called. A contract that
 /// called you gets an `Err` back instead of a reply. The sender still pays gas
 /// and uses their nonce.
+///
+/// A trap carries no message, so `reason` is not seen on chain. It is shown
+/// when a handler is run off-chain in tests. To give a user a reason, return
+/// [`error`] instead.
 pub fn fail(_reason: &str) -> ! {
     #[cfg(target_arch = "wasm32")]
     {
@@ -191,8 +195,7 @@ impl Call {
             action: obj.string("action")?.unwrap_or_default(),
             caller: obj.string("caller")?.unwrap_or_default(),
             args: obj.strings("args")?,
-            // The node sends `null` here today. If it ever sends a shape this
-            // crate does not know, the call still runs and this reads as none.
+            // Reserved. An unknown shape reads as none and the call still runs.
             token_context: obj.string("token_context").unwrap_or(None),
             value,
         })
@@ -382,7 +385,7 @@ mod tests {
         assert_eq!((call.action(), call.caller(), call.value()), ("go", "a", 3));
         assert_eq!(call.args(), ["1"]);
         assert_eq!(call.token_context(), None);
-        // An older node sends no value at all.
+        // A call with no value field at all.
         let call = Call::from_json(r#"{"action":"go","caller":"a","args":[]}"#).unwrap();
         assert_eq!(call.value(), 0);
     }

@@ -465,8 +465,7 @@ impl Client {
             "method": method,
             "args": args,
             "view": true,
-            // The endpoint reads a nonce before it looks at `view`. A view
-            // signs nothing and uses none.
+            // A view signs nothing and uses no nonce.
             "nonce": 0,
         });
         self.post("/api/contract/call", &body).await
@@ -567,10 +566,9 @@ fn error_for(status: u16, body: &str) -> Error {
 
 fn first_line(s: &str) -> String {
     let line = s.lines().next().unwrap_or("").trim();
-    if line.len() > 300 {
-        format!("{}...", &line[..300])
-    } else {
-        line.to_string()
+    match line.char_indices().nth(300) {
+        Some((cut, _)) => format!("{}...", &line[..cut]),
+        None => line.to_string(),
     }
 }
 
@@ -631,5 +629,8 @@ mod tests {
     fn long_node_errors_are_trimmed_to_one_line() {
         let msg = first_line(&format!("first line\nsecond\n{}", "x".repeat(500)));
         assert_eq!(msg, "first line");
+        let long = "é".repeat(400);
+        let cut = first_line(&long);
+        assert_eq!(cut, format!("{}...", "é".repeat(300)));
     }
 }

@@ -58,7 +58,7 @@ The SDK turns 429 and 503 into `Error::Busy` and says the request is worth tryin
 | Message from the SDK | Fix |
 |---|---|
 | `argument 1 ("a,b") contains , ( ) or ::` | Split it into several arguments or encode it. |
-| `a single empty argument reaches the contract as no arguments` | Pass no arguments instead. |
+| `a single empty argument is not allowed` | Pass no arguments instead. |
 | `argument ... cannot be sent in a free read` | Use `retium view` or `Client::view` for that text. |
 
 ## When a transaction seems stuck

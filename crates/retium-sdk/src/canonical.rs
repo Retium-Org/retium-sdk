@@ -19,8 +19,7 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Payload version. v4 came with the 2026 post-quantum migration and v5 added
-/// [`CanonicalPayload::fee_currency`], the coin the gas is paid in.
+/// Payload version.
 pub const VERSION: u8 = 5;
 
 /// Gas paid in RTM (the default).
@@ -31,19 +30,16 @@ pub const FEE_RTD: u8 = 1;
 /// Chain identifiers. The chain id is signed, so a transaction made for one
 /// network can never be replayed on another.
 ///
-/// Until mainnet, every Retium network signs as [`ChainId::Devnet`],
-/// including the public testnet at `rpc.retium.org`. That is the default
-/// everywhere in this SDK. A transaction signed for `Testnet` is refused there
-/// today.
+/// The public testnet at `rpc.retium.org` uses [`ChainId::Devnet`], the
+/// default everywhere in this SDK.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 #[repr(u32)]
 pub enum ChainId {
     /// The live network.
     Mainnet = 1,
-    /// Reserved for the public test network. It signs as `Devnet` for now.
+    /// Reserved.
     Testnet = 2,
-    /// The chain id every network uses until mainnet, the public testnet
-    /// included.
+    /// The public testnet.
     Devnet = 3,
 }
 
@@ -91,7 +87,7 @@ pub struct CanonicalPayload {
     /// check their view is at least this, which makes their result independent
     /// of when other transactions arrive.
     pub sender_balance_claim: u128,
-    /// Contract method for `call`, the role for `register_validator`, empty otherwise.
+    /// Contract method for `call`, empty otherwise.
     pub method: String,
     /// blake3 of the call arguments, of the endpoint, or zeros.
     pub args_hash: [u8; 32],

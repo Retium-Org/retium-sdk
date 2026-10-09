@@ -29,7 +29,7 @@ rpc = ["dep:reqwest", "dep:tokio"]
 cli = ["rpc", "dep:clap"]
 
 [dependencies]
-ml-dsa = "=0.1.1"
+ml-dsa = { version = "=0.1.1", features = ["zeroize"] }
 blake3 = "1.8"
 hex = "0.4"
 bincode = "1.3"

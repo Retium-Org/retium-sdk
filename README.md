@@ -17,7 +17,7 @@ let sent = tx::transfer(&client, &key, "rete...", "1.5").await?;
 client.wait_for_final(&sent.tx_id, std::time::Duration::from_secs(120)).await?;
 ```
 
-Building with an AI agent? Point it at [SKILL.md](SKILL.md). It explains every common task with exact commands.
+Building with an AI agent? Point it at [AGENTS.md](AGENTS.md). It explains every common task with exact commands.
 
 ## What is in here
 
@@ -43,7 +43,7 @@ Rust 1.85 or newer. The repo pins a toolchain in `rust-toolchain.toml` so contra
 
 ## Getting started
 
-The SDK comes with no account and no keys. You make your own, fund it, and get an API key. It takes about ten minutes.
+The SDK comes with no account and no keys. You make your own, fund it, and get an API key. It takes about fifteen minutes.
 
 ### 1. Make an account
 
@@ -77,7 +77,7 @@ Testnet coins have no value and are never sold.
 - **RTD (Retium Dollar).** Claim it on [retium.money](https://retium.money) after linking your Discord account. You can pay gas in RTD by adding `--fee RTD` to any command that sends a transaction. It costs 1.5 times the RTM fee.
 - **RTM.** Buy it with RTD on [retium.money](https://retium.money), or ask in the Retium Discord.
 
-A deploy costs 0.50 RTM in gas and a simple call 0.01 to 0.50 RTM, depending on the contract's weight.
+A deploy costs $0.50 of gas and a simple call $0.01 to $0.50, depending on the contract's weight, charged in RTM at the network's reference price or in RTD at 1.5 times that.
 
 ### 4. Get an API key
 

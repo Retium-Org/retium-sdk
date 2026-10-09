@@ -25,8 +25,7 @@ use crate::rpc::{Client, Submitted};
 /// How a transaction is signed. Both fields are part of the signature.
 #[derive(Clone, Copy, Debug)]
 pub struct Options {
-    /// Chain id to sign for. Every network signs as [`ChainId::Devnet`] until
-    /// mainnet, the public testnet included.
+    /// Chain id to sign for. The public testnet is [`ChainId::Devnet`].
     pub chain: ChainId,
     /// The coin the gas is paid in: [`FEE_RTM`] (the default) or [`FEE_RTD`],
     /// Retium Dollar, at 1.5x the RTM fee. Paying in RTD needs RTD in the
@@ -179,8 +178,7 @@ pub async fn deploy_with(
 /// it receives from you is what you attach here, and you sign that amount.
 ///
 /// The method and arguments are checked with [`contract::check_call`] before
-/// anything is signed. The chain joins arguments with commas, so an argument
-/// holding `,` `(` `)` or `::` is refused rather than split.
+/// anything is signed. An argument holding `,` `(` `)` or `::` is refused.
 pub async fn call(
     client: &Client,
     key: &SecretKey,
@@ -220,8 +218,7 @@ pub async fn call_with(
         Some(v) => amount::parse_rtm(v)?,
         None => 0,
     };
-    // The node re-parses "id::method(args)" and hashes the comma-joined args,
-    // so the string signed here must be exactly the one sent.
+    // The signed string must be exactly the one sent.
     let args_joined = args.join(",");
     let ctx = context(client, &from).await?;
     let payload = opts.apply(CanonicalPayload::call(

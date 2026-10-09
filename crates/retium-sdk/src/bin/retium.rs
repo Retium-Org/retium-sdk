@@ -11,7 +11,6 @@ use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
 use retium_sdk::{
-    address, amount,
     canonical::{ChainId, FEE_RTD, FEE_RTM},
     contract,
     key::SecretKey,
@@ -31,8 +30,7 @@ struct Cli {
     #[arg(long, env = "RETIUM_API_KEY", hide_env_values = true, global = true)]
     api_key: Option<String>,
 
-    /// Chain id to sign for (mainnet, testnet or devnet). Every network signs
-    /// as devnet until mainnet, the public testnet included, so leave it alone.
+    /// Chain id to sign for. The public testnet is devnet (3), the default.
     #[arg(long, env = "RETIUM_CHAIN", default_value = "devnet", global = true)]
     chain: String,
 
@@ -632,10 +630,4 @@ fn out(json: bool, value: &serde_json::Value, text: &str) -> String {
     } else {
         text.to_string()
     }
-}
-
-#[allow(dead_code)]
-fn unused_reexports() {
-    // Keeps the lints honest about what this binary is expected to use.
-    let _ = (address::is_valid("x"), amount::parse_rtm("1").is_ok());
 }

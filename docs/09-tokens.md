@@ -39,7 +39,7 @@ init(name, symbol, supply, owner)
 
 Your `init` should check that `owner` equals `call.caller()`, record the owner, and credit the whole supply to them. If `init` refuses or traps, the whole deploy fails, so a token never exists half set up.
 
-Nobody can call `init` on a token afterwards, neither a user nor another contract. The chain refuses it. That closes the gap a hand-called `init` would leave, where the first caller of a fresh token could take its supply.
+Nobody can call `init` on a token afterwards, neither a user nor another contract. The chain refuses it, so the supply can only ever go to the deployer.
 
 ## Methods
 

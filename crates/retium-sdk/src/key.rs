@@ -5,7 +5,7 @@
 //! those 32 bytes is a complete backup of the account.
 //!
 //! The secret never leaves this process. Signing is local, and [`SecretKey`]
-//! wipes its seed from memory when dropped.
+//! wipes its seed and the expanded signing key from memory when dropped.
 
 use ml_dsa::{Keypair as _, MlDsa44, Signer as _, Verifier as _};
 use zeroize::Zeroize;
@@ -102,7 +102,8 @@ impl std::fmt::Debug for PublicKey {
 
 /// A secret key. Keep it out of logs, arguments and version control.
 ///
-/// The seed is wiped from memory when this value is dropped.
+/// The seed and the expanded signing key are wiped from memory when this
+/// value is dropped.
 pub struct SecretKey {
     seed: [u8; SEED_LEN],
     inner: ml_dsa::SigningKey<Params>,
@@ -145,10 +146,10 @@ impl SecretKey {
         Ok(key)
     }
 
-    /// Parse a 37-byte key file. A pre-2026 32-byte file is refused by name.
+    /// Parse a 37-byte key file. A bare 32-byte seed is refused by name.
     pub fn from_key_file_bytes(bytes: &[u8]) -> Result<Self> {
         if bytes.len() == SEED_LEN {
-            return Err(Error::LegacyKeyFile);
+            return Err(Error::RawSeedFile);
         }
         if bytes.len() != KEY_FILE_LEN {
             return Err(Error::BadLength {
@@ -190,17 +191,19 @@ impl SecretKey {
     /// Write a key file, readable only by its owner on Unix. Refuses to
     /// overwrite, because a key file is not something to replace by accident.
     pub fn write_key_file(&self, path: impl AsRef<std::path::Path>) -> Result<()> {
+        use std::io::Write;
         let path = path.as_ref();
-        if path.exists() {
-            return Err(Error::Io(format!("{} already exists", path.display())));
-        }
-        std::fs::write(path, self.to_key_file_bytes())
-            .map_err(|e| Error::Io(format!("{}: {}", path.display(), e)))?;
+        let mut options = std::fs::OpenOptions::new();
+        options.write(true).create_new(true);
         #[cfg(unix)]
         {
-            use std::os::unix::fs::PermissionsExt;
-            let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600));
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
         }
+        let io = |e: std::io::Error| Error::Io(format!("{}: {}", path.display(), e));
+        let mut file = options.open(path).map_err(io)?;
+        file.write_all(&self.to_key_file_bytes()).map_err(io)?;
+        file.sync_all().map_err(io)?;
         Ok(())
     }
 
@@ -268,9 +271,9 @@ mod tests {
     }
 
     #[test]
-    fn a_pre_2026_key_file_is_refused_by_name() {
+    fn a_raw_seed_file_is_refused_by_name() {
         let err = SecretKey::from_key_file_bytes(&[0u8; 32]).unwrap_err();
-        assert!(matches!(err, Error::LegacyKeyFile), "got {err}");
+        assert!(matches!(err, Error::RawSeedFile), "got {err}");
     }
 
     #[test]

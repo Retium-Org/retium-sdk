@@ -42,7 +42,7 @@ The signed message is `blake3(bincode(payload))`, and the payload has these fiel
 | # | Field | Type |
 |---|---|---|
 | 1 | `version` | `u8`, currently `5` |
-| 2 | `chain_id` | `u32`, 1 mainnet, 2 testnet, 3 devnet. Every network uses `3` until mainnet, the public testnet included. |
+| 2 | `chain_id` | `u32`, `3` on the public testnet |
 | 3 | `action` | string, `transfer`, `deploy`, `call` or `api_key` |
 | 4 | `sender` | string, your address |
 | 5 | `recipient` | string, an address, a contract id or `API_KEY_REGISTRY` |
@@ -105,7 +105,7 @@ For a `call`, `blake3` of the arguments joined with commas, exactly as sent.
 args = ["rete...bob", "10"]      gives blake3("rete...bob,10")
 ```
 
-The chain carries the call as `contract::method(arg1,arg2)` and splits it on the same commas to run it. So an argument must not contain `,` `(` `)` or `::`, a method name is letters, digits and `_`, and a call with exactly one empty argument arrives with none. Refuse these before signing, because the signature would still be valid for the changed arguments.
+An argument may not contain `,` `(` `)` or `::`, a method name is letters, digits and `_`, and a call must not consist of exactly one empty argument. Check these before signing.
 
 For `api_key`, `blake3` of the payload JSON text, byte for byte as sent. For `transfer` and `deploy`, 32 zero bytes.
 

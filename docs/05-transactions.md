@@ -23,9 +23,9 @@ payload = version | chain_id | action | sender | recipient | amount
 | `declared` | Which accounts this transaction may write to. |
 | `fee_currency` | Whether gas is paid in RTM or RTD, so a relay cannot change it. |
 
-Every network signs with chain id 3 until mainnet, the public testnet included. The SDK uses that by default, and a transaction signed for chain id 2 is refused today.
+The public testnet uses chain id 3, the SDK default.
 
-**The balance claim** is your view of your own balance. Every keeper checks that its own view is at least that much, which makes the result independent of when other transactions arrive. The SDK fills it in from the node. If you build the payload yourself, do not send zero as a habit, because that weakens a check that exists to protect you.
+**The balance claim** is your confirmed balance when you signed. A keeper refuses the transaction if its own view of your balance is below the claim, so the result does not depend on when other transactions arrive. The SDK fills it in from the node. If you build the payload yourself, send the balance the node reported.
 
 **`declared`** is the list of accounts a transaction may write, sorted and de-duplicated.
 
@@ -63,7 +63,7 @@ Include your public key at least on your account's first transaction, after whic
 
 ## Call arguments
 
-A call signs `blake3` of its arguments joined with commas, and the chain splits them back apart on the same commas to run the call. An argument containing `,` `(` `)` or `::` would reach the contract changed, while the signature stayed valid. `tx::call` refuses such arguments before signing, and so does `retium call`. See [Writing contracts](04-writing-contracts.md#arguments).
+A call signs `blake3` of its arguments joined with commas. An argument may not contain `,` `(` `)` or `::`. `tx::call` and `retium call` check this before signing. See [Writing contracts](04-writing-contracts.md#arguments).
 
 ## Nonces
 

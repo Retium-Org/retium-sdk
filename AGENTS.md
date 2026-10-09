@@ -1,8 +1,3 @@
----
-name: retium
-description: Work with the Retium blockchain (public testnet). Make an account, read balances and contracts, send RTM, call and deploy smart contracts, pay gas in RTM or RTD, and manage API keys, using the retium command-line tool from the Retium SDK. Use it whenever a task mentions Retium, RTM, RTD, rete... addresses or rpc.retium.org.
----
-
 # Working with Retium
 
 This file is written for an AI agent. Read it once and you can do every common Retium task. Each task below gives the exact command and what a good answer looks like. The human docs are in `docs/` of the SDK repository if you need more depth.
@@ -46,7 +41,7 @@ Settings come from environment variables, so set them once per session.
 | `RETIUM_RPC` | endpoint | `https://rpc.retium.org` |
 | `RETIUM_FEE` | `RTM` or `RTD` for gas | `RTM` |
 
-Options such as `--json`, `--fee RTD` and `--key` may go anywhere on the command line, before or after the subcommand. `--json` gives machine-readable output. Do not change `--chain`. Every network, the public testnet included, signs with chain id 3 (named devnet) until mainnet, and the default is right.
+Options such as `--json`, `--fee RTD` and `--key` may go anywhere on the command line, before or after the subcommand. `--json` gives machine-readable output. Do not change `--chain`. The public testnet uses chain id 3, which is the default.
 
 ## Task 1. Make an account
 
@@ -64,7 +59,7 @@ If the user already has a Retium wallet and wants you to use it, they run `retiu
 
 A new account has nothing, and the first API key needs a wallet in a browser. Ask the user to do this, giving them your address.
 
-> Please fund `rete...` on the Retium testnet. Claim RTD at https://retium.money (link your Discord account), and buy a little RTM with RTD in the Safehouse there if you can. Then open https://retium.net/api-keys, connect your Retium wallet, create a free API key and give me the `rk_...` secret.
+> Please fund `rete...` on the Retium testnet. Claim RTD at https://retium.money (link your Discord account), and buy a little RTM with RTD in the Safehouse there if you can. Then open https://retium.net/api-keys, connect your Retium wallet, create a free API key and set it as `RETIUM_API_KEY` in my environment.
 
 Then:
 
@@ -130,7 +125,7 @@ retium --json call <contract_id> <method> arg1 arg2
 retium tx <tx_id> --wait                          # must say HardFinal, result ok
 ```
 
-* Arguments are plain text. None may contain `,` `(` `)` or `::`, because the chain joins and re-splits them on those. The tool refuses such arguments before signing. Split structured data into several arguments or encode it as hex.
+* Arguments are plain text. None may contain `,` `(` `)` or `::`. The tool refuses such arguments before signing. Split structured data into several arguments or encode it as hex.
 * To pay a contract, attach RTM with `--value 2.5`. A contract can never take RTM from the wallet any other way.
 * `result failed` with a reason means the contract refused. The transaction is still final, nothing it did was kept and attached RTM came back, but the gas was paid. `retium tx --wait` then prints `error:` and exits with code 1, so a script sees it as a failure. Read the reason, do not resend blindly.
 * **Know the method names before you call.** Retium contracts do not publish a method list on chain, and `retium contract <id>` does not show one. Get the methods from the contract's source or its project's docs, or ask the user. Do not guess, because a call to an unknown method still costs gas.
@@ -204,7 +199,7 @@ A transaction that stays `Pending` for a few minutes is normal at busy times. `r
 | | |
 |---|---|
 | Endpoint | `https://rpc.retium.org` |
-| Network | public testnet, signs with chain id 3 (devnet) until mainnet |
+| Network | public testnet, chain id 3 |
 | Signature | ML-DSA-44 (FIPS 204), signed locally by `retium` |
 | Address | `rete` + 64 hex (hash of the public key) + 4 hex (checksum) |
 | RTM | native coin, 18 decimals |
