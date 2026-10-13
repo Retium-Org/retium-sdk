@@ -185,7 +185,7 @@ retium deploy target/wasm32-unknown-unknown/release/your_contract.wasm --dry-run
 
 ## Other languages
 
-The chain runs WebAssembly and does not know what produced it. The same counter is in [`examples/`](../examples) in AssemblyScript, C, Zig and hand-written WebAssembly text, each with its build command, and one script, `examples/run-as-runtime.mjs`, checks any of them the way the chain runs them. Without `retium-contract` you talk to the chain through the interface in the [wire reference](08-wire-reference.md#6-contract-interface). Two rules there have no Rust equivalent, because Rust gets them right by default: keep your memory above 64 KiB, and declare the weight the chain scores your code at.
+The chain runs WebAssembly and does not know what produced it. The same counter is in [`examples/`](../examples) in AssemblyScript, C, Zig, Go and hand-written WebAssembly text, each with its build command, and one script, `examples/run-as-runtime.mjs`, checks any of them the way the chain runs them. Without `retium-contract` you talk to the chain through the interface in the [wire reference](08-wire-reference.md#6-contract-interface). Two rules there have no Rust equivalent, because Rust gets them right by default: keep your memory above 64 KiB, and declare the weight the chain scores your code at.
 
 ## Checklist before you deploy
 

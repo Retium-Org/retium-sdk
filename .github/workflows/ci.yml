@@ -49,8 +49,15 @@ jobs:
         run: node examples/run-as-runtime.mjs target/wasm32-unknown-unknown/release/hello_counter.wasm
 
   other-languages:
-    name: contracts in AssemblyScript, C, Zig and WebAssembly text
+    name: contracts in AssemblyScript, C, Zig, Go and WebAssembly text
     runs-on: ubuntu-latest
+    env:
+      WASMS: >-
+        examples/hello_counter_as/build/hello_counter.wasm
+        examples/hello_counter_c/counter.wasm
+        examples/hello_counter_zig/counter.wasm
+        examples/hello_counter_go/counter.wasm
+        examples/hello_counter_wat/counter.wasm
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
@@ -63,6 +70,13 @@ jobs:
       - uses: mlugg/setup-zig@v2
         with:
           version: 0.17.0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+      - uses: acifani/setup-tinygo@v2
+        with:
+          tinygo-version: 0.43.0
+          binaryen-version: version_133
 
       - name: Assembler for the WebAssembly text example
         run: cargo install wasm-tools --locked
@@ -74,24 +88,19 @@ jobs:
             -o examples/hello_counter_c/counter.wasm examples/hello_counter_c/counter.c
           zig build-exe examples/hello_counter_zig/counter.zig -target wasm32-freestanding -OReleaseSmall \
             -fno-entry --export=on_use -femit-bin=examples/hello_counter_zig/counter.wasm
+          (cd examples/hello_counter_go && tinygo build -o counter.wasm -target=wasm-unknown -opt=z -no-debug -panic=trap . \
+            && node add-start.mjs counter.wasm)
           wasm-tools parse examples/hello_counter_wat/counter.wat -o examples/hello_counter_wat/counter.wasm
 
       - name: Run each the way the runtime does
-        run: |
-          for w in examples/hello_counter_as/build/hello_counter.wasm examples/hello_counter_c/counter.wasm \
-                   examples/hello_counter_zig/counter.wasm examples/hello_counter_wat/counter.wasm; do
-            node examples/run-as-runtime.mjs "$w"
-          done
+        run: for w in $WASMS; do node examples/run-as-runtime.mjs "$w"; done
 
       # Every check the chain makes on a deploy, without a network.
       - name: Dry-run each deploy
         run: |
           cargo build -p retium-sdk --bin retium
           ./target/debug/retium key new ci.sk > /dev/null
-          for w in examples/hello_counter_as/build/hello_counter.wasm examples/hello_counter_c/counter.wasm \
-                   examples/hello_counter_zig/counter.wasm examples/hello_counter_wat/counter.wasm; do
-            ./target/debug/retium deploy "$w" --dry-run --key ci.sk
-          done
+          for w in $WASMS; do ./target/debug/retium deploy "$w" --dry-run --key ci.sk; done
 
   docs:
     name: documentation

@@ -1,6 +1,6 @@
 # Retium SDK
 
-Build on [Retium](https://retium.org). Create accounts, send transactions and write smart contracts. The SDK is Rust. Contracts are WebAssembly and can be written in Rust, AssemblyScript, C, Zig or anything else that produces a wasm module, and `examples/` has the same contract in each.
+Build on [Retium](https://retium.org). Create accounts, send transactions and write smart contracts. The SDK is Rust. Contracts are WebAssembly and can be written in Rust, AssemblyScript, C, Zig, Go or anything else that produces a wasm module, and `examples/` has the same contract in each.
 
 Retium signs with **ML-DSA-44** (FIPS 204), a post-quantum scheme. Keys and signatures are bigger than the elliptic-curve ones you may be used to (a public key is 1,312 bytes, a signature 2,421), but the work has the same shape. Build a payload, hash it, sign it, send it.
 
@@ -26,7 +26,7 @@ Building with an AI agent? Point it at [AGENTS.md](AGENTS.md). It explains every
 | [`crates/retium-sdk`](crates/retium-sdk) | The client with keys, addresses, amounts, signing, RPC and the `retium` command-line tool |
 | [`crates/retium-contract`](crates/retium-contract) | What you write contracts against, with storage, events, cross-contract calls and the entry point |
 | [`examples/hello_counter`](examples/hello_counter) | One complete, working contract in Rust. Read it before writing your own |
-| [`examples/hello_counter_as`](examples/hello_counter_as), [`_c`](examples/hello_counter_c), [`_zig`](examples/hello_counter_zig), [`_wat`](examples/hello_counter_wat) | The same contract in AssemblyScript, C, Zig and WebAssembly text, for building without Rust |
+| [`examples/hello_counter_as`](examples/hello_counter_as), [`_c`](examples/hello_counter_c), [`_zig`](examples/hello_counter_zig), [`_go`](examples/hello_counter_go), [`_wat`](examples/hello_counter_wat) | The same contract in AssemblyScript, C, Zig, Go and WebAssembly text, for building without Rust |
 | [`docs/`](docs) | How Retium works and how to build on it |
 
 There is no template collection here on purpose. Retium contracts are small and the model is unusual enough that copying a template you do not understand is the fastest way to lose money. Read [docs/04-writing-contracts.md](docs/04-writing-contracts.md) first. It is a short read.

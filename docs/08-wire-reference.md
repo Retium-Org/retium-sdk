@@ -242,9 +242,14 @@ The chain uses the bottom of your memory. The input lands at offset 0 and the re
 | Zig, `zig cc` | Already so, the same layout as Rust. |
 | clang with wasm-ld | `-Wl,--stack-first -Wl,-z,stack-size=1048576`. Without it wasm-ld puts data at 1024. |
 | AssemblyScript | `--memoryBase 65536` |
+| Go (TinyGo, `wasm-unknown`) | Already so, with a 64 KiB stack first. Keep stack use modest. |
 | WebAssembly text | Every `data` segment at 65536 or above, and at least 2 pages of memory. |
 
-Import only the host functions below. The chain instantiates the module with exactly these, so a module that imports anything else, such as AssemblyScript's default `abort` or a WASI function, fails to instantiate. A complete counter contract in each of these languages is under [`examples/`](../examples), and `examples/run-as-runtime.mjs` runs any wasm file the way the chain does.
+Import only the host functions below. The chain instantiates the module with exactly these, so a module that imports anything else, such as AssemblyScript's default `abort` or a WASI function, fails to instantiate.
+
+The chain calls nothing but `on_use`. A toolchain that expects the host to call an initialiser first (TinyGo's `_initialize`) must run it from a WebAssembly start section instead, which the chain runs at instantiation. A language where address 0 is a null pointer (Go) must read the input from byte 1, which is safe because the input is a JSON object and byte 0 is always `{`.
+
+A complete counter contract in each of these languages is under [`examples/`](../examples), and `examples/run-as-runtime.mjs` runs any wasm file the way the chain does.
 
 The input JSON looks like this.
 
