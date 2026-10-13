@@ -6,6 +6,11 @@
  *   clang --target=wasm32 -Oz -nostdlib -Wl,--no-entry -Wl,--export=on_use \
  *         -Wl,--stack-first -Wl,-z,stack-size=1048576 -o counter.wasm counter.c
  *
+ * It is also valid C++. Build it the same way with clang++ (or `zig c++`) and
+ * `-fno-exceptions -fno-rtti -x c++`: there is no C++ runtime on the chain, so
+ * no exceptions, no `new` and no standard library. The chain's functions and
+ * `on_use` are declared `extern "C"` so their symbols are not mangled.
+ *
  * Two things matter for any language that is not Rust.
  *
  * 1. The chain writes the call's input at offset 0 of memory and the reply
@@ -20,10 +25,18 @@
 
 /* The functions the chain gives a contract. Import nothing else: the chain
  * refuses to instantiate a module that imports anything it does not provide. */
+#ifdef __cplusplus
+extern "C" {
+#endif
 #define RETIUM(name) __attribute__((import_module("env"), import_name(name)))
 RETIUM("read_state")  int  read_state(const char *key, int key_len, char *out, int out_max);
 RETIUM("write_state") void write_state(const char *key, int key_len, const char *val, int val_len);
 RETIUM("emit_event")  int  emit_event(const char *type, int type_len, const char *data, int data_len);
+__attribute__((export_name("on_use")))
+int on_use(const char *in, int len, char *out);
+#ifdef __cplusplus
+}
+#endif
 
 /* RCP-1 metadata. The chain finds the marker in the wasm bytes and the zero
  * byte that ends a C string ends the JSON. `used` keeps it in the binary. */
@@ -49,16 +62,22 @@ static int same(const char *a, int alen, const char *b, int blen) {
 }
 
 /* With -nostdlib the compiler may still emit calls to these two. */
+#ifdef __cplusplus
+extern "C" {
+#endif
 void *memcpy(void *d, const void *s, unsigned long n) {
-    char *dd = d; const char *ss = s;
+    char *dd = (char *)d; const char *ss = (const char *)s;
     while (n--) *dd++ = *ss++;
     return d;
 }
 void *memset(void *d, int c, unsigned long n) {
-    char *dd = d;
+    char *dd = (char *)d;
     while (n--) *dd++ = (char)c;
     return d;
 }
+#ifdef __cplusplus
+}
+#endif
 
 /* Offset of needle in hay, or -1. */
 static int find(const char *hay, int hlen, const char *needle) {
@@ -190,7 +209,6 @@ static int error(char *out, const char *message) {
 
 /* ---- the entry point ------------------------------------------------------ */
 
-__attribute__((export_name("on_use")))
 int on_use(const char *in, int len, char *out) {
     const char *action, *caller, *arg;
     int alen = field(in, len, "action", &action);

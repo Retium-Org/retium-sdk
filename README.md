@@ -1,6 +1,6 @@
 # Retium SDK
 
-Build on [Retium](https://retium.org). Create accounts, send transactions and write smart contracts. The SDK is Rust. Contracts are WebAssembly and can be written in Rust, AssemblyScript, C, Zig, Go or anything else that produces a wasm module, and `examples/` has the same contract in each.
+Build on [Retium](https://retium.org). Create accounts, send transactions and write smart contracts. The SDK is Rust. Contracts are WebAssembly and can be written in Rust, AssemblyScript, C, C++, Zig, Go or anything else that produces a wasm module, and `examples/` has the same contract in each.
 
 Retium signs with **ML-DSA-44** (FIPS 204), a post-quantum scheme. Keys and signatures are bigger than the elliptic-curve ones you may be used to (a public key is 1,312 bytes, a signature 2,421), but the work has the same shape. Build a payload, hash it, sign it, send it.
 

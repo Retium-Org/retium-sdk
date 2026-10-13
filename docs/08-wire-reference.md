@@ -236,11 +236,11 @@ on_use(input_ptr: i32, input_len: i32, output_ptr: i32) -> i32
 
 The chain uses the bottom of your memory. The input lands at offset 0 and the reply buffer starts at `input_len + 1024`, so the first `input_len + 5120` bytes are the chain's. **Keep your own data, stack and heap above 64 KiB.** A module with a string constant at offset 1024 has it overwritten by a call with a long argument, and answers garbage.
 
-| Toolchain | How |
+| Language and toolchain | How |
 |---|---|
 | Rust (`wasm32-unknown-unknown`) | Already so. The stack takes the first 1 MiB and data follows. |
-| Zig, `zig cc` | Already so, the same layout as Rust. |
-| clang with wasm-ld | `-Wl,--stack-first -Wl,-z,stack-size=1048576`. Without it wasm-ld puts data at 1024. |
+| C and C++ with clang | `-Wl,--stack-first -Wl,-z,stack-size=1048576`. Without it wasm-ld puts data at 1024. |
+| C and C++ with `zig cc` / `zig c++`, and Zig | Already so, the same layout as Rust. |
 | AssemblyScript | `--memoryBase 65536` |
 | Go (TinyGo, `wasm-unknown`) | Already so, with a 64 KiB stack first. Keep stack use modest. |
 | WebAssembly text | Every `data` segment at 65536 or above, and at least 2 pages of memory. |

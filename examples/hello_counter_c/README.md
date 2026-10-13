@@ -1,6 +1,6 @@
-# hello_counter in C
+# hello_counter in C and C++
 
-The same counter as [`hello_counter`](../hello_counter), written in C with no libc. Actions: `init`, `bump [step]`, `value`, `owner` and `reset`. The source is `counter.c`, one file.
+The same counter as [`hello_counter`](../hello_counter), written in C with no libc. Actions: `init`, `bump [step]`, `value`, `owner` and `reset`. The source is `counter.c`, one file, and it is valid C++ as well (see below).
 
 ## Build
 
@@ -15,6 +15,12 @@ Or with Zig, which ships a C compiler and needs no layout flags:
 
 ```bash
 zig cc --target=wasm32-freestanding -Oz -nostdlib -Wl,--no-entry -Wl,--export=on_use -o counter.wasm counter.c
+```
+
+For C++, use `clang++` or `zig c++` with the same flags plus `-fno-exceptions -fno-rtti` (and `-x c++` to compile this `.c` file as C++). There is no C++ runtime on the chain, so no exceptions, no `new` and no standard library. The chain's functions and `on_use` are declared `extern "C"` so the linker finds them under their plain names.
+
+```bash
+zig c++ --target=wasm32-freestanding -Oz -nostdlib -fno-exceptions -fno-rtti -Wl,--no-entry -Wl,--export=on_use -x c++ counter.c -o counter.wasm
 ```
 
 Then run it the way the chain does:
