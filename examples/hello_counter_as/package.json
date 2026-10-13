@@ -1,0 +1,13 @@
+{
+  "name": "hello_counter_as",
+  "private": true,
+  "description": "The Retium hello_counter contract written in AssemblyScript",
+  "type": "module",
+  "scripts": {
+    "build": "asc assembly/index.ts --target release",
+    "check": "node ../run-as-runtime.mjs build/hello_counter.wasm"
+  },
+  "devDependencies": {
+    "assemblyscript": "^0.28.20"
+  }
+}

@@ -232,6 +232,20 @@ on_use(input_ptr: i32, input_len: i32, output_ptr: i32) -> i32
 * A **trap** discards everything the call did, its writes, events and transfers.
 * The reply must be valid UTF-8 and valid JSON, at most **4,096 bytes**. A reply that is a JSON object with an `error` field is a refusal. On a user's call the chain then undoes the call like a trap and keeps the error as the reason.
 
+### Memory layout
+
+The chain uses the bottom of your memory. The input lands at offset 0 and the reply buffer starts at `input_len + 1024`, so the first `input_len + 5120` bytes are the chain's. **Keep your own data, stack and heap above 64 KiB.** A module with a string constant at offset 1024 has it overwritten by a call with a long argument, and answers garbage.
+
+| Toolchain | How |
+|---|---|
+| Rust (`wasm32-unknown-unknown`) | Already so. The stack takes the first 1 MiB and data follows. |
+| Zig, `zig cc` | Already so, the same layout as Rust. |
+| clang with wasm-ld | `-Wl,--stack-first -Wl,-z,stack-size=1048576`. Without it wasm-ld puts data at 1024. |
+| AssemblyScript | `--memoryBase 65536` |
+| WebAssembly text | Every `data` segment at 65536 or above, and at least 2 pages of memory. |
+
+Import only the host functions below. The chain instantiates the module with exactly these, so a module that imports anything else, such as AssemblyScript's default `abort` or a WASI function, fails to instantiate. A complete counter contract in each of these languages is under [`examples/`](../examples), and `examples/run-as-runtime.mjs` runs any wasm file the way the chain does.
+
 The input JSON looks like this.
 
 ```json
@@ -294,7 +308,14 @@ Embedded in the wasm as a marker, JSON and a zero byte. All seven fields are req
 RCP_METADATA:{"rcp_type":"token","traits":["fungible"],"capabilities":["execute"],"lockable_fields":[],"evolves_from":"","weight":5,"version":"v1.0.0"}\0
 ```
 
-The chain checks at deploy that `rcp_type` and `version` are not empty, that there is at least one trait or capability, and that `weight` is between 1 and 5 and equal to the chain's score of the code or one above it. Rust contracts score 5. A module must export `on_use`.
+The chain checks at deploy that `rcp_type` and `version` are not empty, that there is at least one trait or capability, and that `weight` is between 1 and 5 and equal to the chain's score of the code or one above it. A module must export `on_use`.
+
+The score counts the module's instructions, loops, calls, branches and memory operations. Rust contracts score 5, and so does most code with string handling in it, whatever the language. A small hand-written module can score 1 to 4. The score matters twice.
+
+* The embedded `weight` must be the score or one above it.
+* A deploy request **without** a `metadata` object is itself weight 5 and is refused when the code scores below 4. Send `"metadata": {"weight": N}` with `N` the score. The chain then stores the contract at that weight, which is what its calls cost.
+
+`retium deploy --dry-run` prints the score and names which rule applies. The formula is `simulated_weight` in `crates/retium-sdk/src/contract.rs` if you need it in another language.
 
 ```
 contract_id = hex(blake3( wasm + deployer + [weight] + name? + symbol? + rcp_type? + each trait ))

@@ -46,7 +46,52 @@ jobs:
 
       # Host tests never go through the wasm entry point. This does.
       - name: Run the example the way the runtime does
-        run: node examples/hello_counter/run-as-runtime.mjs
+        run: node examples/run-as-runtime.mjs target/wasm32-unknown-unknown/release/hello_counter.wasm
+
+  other-languages:
+    name: contracts in AssemblyScript, C, Zig and WebAssembly text
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.91.1
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.17.0
+
+      - name: Assembler for the WebAssembly text example
+        run: cargo install wasm-tools --locked
+
+      - name: Build every example
+        run: |
+          (cd examples/hello_counter_as && npm ci && npm run build)
+          zig cc --target=wasm32-freestanding -Oz -nostdlib -Wl,--no-entry -Wl,--export=on_use \
+            -o examples/hello_counter_c/counter.wasm examples/hello_counter_c/counter.c
+          zig build-exe examples/hello_counter_zig/counter.zig -target wasm32-freestanding -OReleaseSmall \
+            -fno-entry --export=on_use -femit-bin=examples/hello_counter_zig/counter.wasm
+          wasm-tools parse examples/hello_counter_wat/counter.wat -o examples/hello_counter_wat/counter.wasm
+
+      - name: Run each the way the runtime does
+        run: |
+          for w in examples/hello_counter_as/build/hello_counter.wasm examples/hello_counter_c/counter.wasm \
+                   examples/hello_counter_zig/counter.wasm examples/hello_counter_wat/counter.wasm; do
+            node examples/run-as-runtime.mjs "$w"
+          done
+
+      # Every check the chain makes on a deploy, without a network.
+      - name: Dry-run each deploy
+        run: |
+          cargo build -p retium-sdk --bin retium
+          ./target/debug/retium key new ci.sk > /dev/null
+          for w in examples/hello_counter_as/build/hello_counter.wasm examples/hello_counter_c/counter.wasm \
+                   examples/hello_counter_zig/counter.wasm examples/hello_counter_wat/counter.wasm; do
+            ./target/debug/retium deploy "$w" --dry-run --key ci.sk
+          done
 
   docs:
     name: documentation

@@ -1,0 +1,17 @@
+{
+  "targets": {
+    "release": {
+      "outFile": "build/hello_counter.wasm",
+      "optimizeLevel": 3,
+      "shrinkLevel": 2,
+      "converge": true,
+      "noAssert": true
+    }
+  },
+  "options": {
+    "runtime": "stub",
+    "use": ["abort="],
+    "memoryBase": 65536,
+    "exportStart": false
+  }
+}

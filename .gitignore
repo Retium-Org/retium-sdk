@@ -5,3 +5,9 @@ Cargo.lock.bak
 *.key
 *.pem
 .env
+
+# Built examples in other languages
+examples/**/*.wasm
+examples/**/*.o
+.zig-cache
+zig-out

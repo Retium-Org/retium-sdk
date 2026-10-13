@@ -183,6 +183,10 @@ retium deploy target/wasm32-unknown-unknown/release/your_contract.wasm --dry-run
 
 [`examples/hello_counter`](../examples/hello_counter) is a complete contract with an owner, a guarded action, events, metadata and tests. Read it before writing your own.
 
+## Other languages
+
+The chain runs WebAssembly and does not know what produced it. The same counter is in [`examples/`](../examples) in AssemblyScript, C, Zig and hand-written WebAssembly text, each with its build command, and one script, `examples/run-as-runtime.mjs`, checks any of them the way the chain runs them. Without `retium-contract` you talk to the chain through the interface in the [wire reference](08-wire-reference.md#6-contract-interface). Two rules there have no Rust equivalent, because Rust gets them right by default: keep your memory above 64 KiB, and declare the weight the chain scores your code at.
+
 ## Checklist before you deploy
 
 - [ ] No `static mut` or global state. Everything lives in `storage`.
@@ -191,7 +195,7 @@ retium deploy target/wasm32-unknown-unknown/release/your_contract.wasm --dry-run
 - [ ] Arithmetic uses the checked helpers (`add_u128`, `sub_u128`) or your own checks.
 - [ ] Loops are bounded.
 - [ ] Events are built with `emit_fields` or `json_string`.
-- [ ] `rcp_metadata!` is present with all seven fields and weight 5.
+- [ ] `rcp_metadata!` is present with all seven fields and weight 5 (in another language, the weight the dry run reports).
 - [ ] Tests cover the refusal paths, not just the happy path.
 - [ ] Built with `--release`, and the dry run passed.
 
