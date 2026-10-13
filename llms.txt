@@ -21,6 +21,7 @@
 - [Tokens](docs/09-tokens.md): what wallets expect from a fungible token
 - [Connecting a wallet](docs/10-connecting-a-wallet.md): signing from a web page
 - [Errors](docs/11-errors.md): messages and what to do
+- [Building with an AI agent](docs/12-ai-agents.md): for the person running the agent, what to give it and what to expect
 
 ## Examples
 

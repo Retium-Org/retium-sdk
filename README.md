@@ -17,7 +17,7 @@ let sent = tx::transfer(&client, &key, "rete...", "1.5").await?;
 client.wait_for_final(&sent.tx_id, std::time::Duration::from_secs(120)).await?;
 ```
 
-Building with an AI agent? Point it at [AGENTS.md](AGENTS.md). It explains every common task with exact commands.
+Building with an AI agent? Point it at [AGENTS.md](AGENTS.md). It explains every common task with exact commands, and [docs/12-ai-agents.md](docs/12-ai-agents.md) tells you what to expect.
 
 ## What is in here
 
@@ -123,6 +123,7 @@ The full walk-through is in [docs/02-quickstart.md](docs/02-quickstart.md).
 9. [Tokens](docs/09-tokens.md). What wallets and other contracts expect from a fungible token
 10. [Connecting a wallet](docs/10-connecting-a-wallet.md). Asking the Retium wallet to sign from a web page
 11. [Errors](docs/11-errors.md). What the messages mean and what to do
+12. [Building with an AI agent](docs/12-ai-agents.md). Handing the work to an assistant, and keeping your keys and money safe while it does it
 
 ## Testnet
 

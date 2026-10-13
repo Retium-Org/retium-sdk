@@ -188,6 +188,6 @@ if let Outcome::Failed(reason) = status.outcome {
 }
 ```
 
-When something goes wrong, see [Errors](11-errors.md).
+When something goes wrong, see [Errors](11-errors.md). To have an AI assistant do these steps for you, see [Building with an AI agent](12-ai-agents.md).
 
 Read on with [Writing contracts](04-writing-contracts.md).
