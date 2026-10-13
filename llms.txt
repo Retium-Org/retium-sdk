@@ -18,12 +18,12 @@
 - [Verifying code](docs/06-verifying-code.md): proving a contract runs published source
 - [Security](docs/07-security.md): keys and what the chain does and does not guarantee
 - [Wire reference](docs/08-wire-reference.md): HTTP interface, signed byte layout and the contract interface, for other languages
+- [Tokens](docs/09-tokens.md): what wallets expect from a fungible token
+- [Connecting a wallet](docs/10-connecting-a-wallet.md): signing from a web page
+- [Errors](docs/11-errors.md): messages and what to do
 
 ## Examples
 
 - [hello_counter](examples/hello_counter): the reference contract, in Rust
 - [hello_counter_as](examples/hello_counter_as), [hello_counter_c](examples/hello_counter_c), [hello_counter_zig](examples/hello_counter_zig), [hello_counter_go](examples/hello_counter_go), [hello_counter_wat](examples/hello_counter_wat): the same contract in AssemblyScript, C, Zig, Go and WebAssembly text
 - [run-as-runtime.mjs](examples/run-as-runtime.mjs): runs any of them the way the chain does
-- [Tokens](docs/09-tokens.md): what wallets expect from a fungible token
-- [Connecting a wallet](docs/10-connecting-a-wallet.md): signing from a web page
-- [Errors](docs/11-errors.md): messages and what to do
