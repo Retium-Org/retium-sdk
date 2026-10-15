@@ -2,7 +2,7 @@
 
 ## Reporting a vulnerability
 
-Please report security problems privately, not as a public issue. Email **security@retium.org**, or use the contact route published at [retium.org](https://retium.org).
+Please report security problems privately, not as a public issue. Email **security@retium.org**.
 
 Include what you found, how to reproduce it, and what an attacker could do with it. Please give us reasonable time to fix an issue before publishing it.
 
