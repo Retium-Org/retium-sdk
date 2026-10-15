@@ -5,6 +5,9 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
@@ -14,7 +17,7 @@ jobs:
     name: format, lint, test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       # The toolchain rust-toolchain.toml pins, so CI builds the bytes a
       # contributor builds.
       - uses: dtolnay/rust-toolchain@master
@@ -59,24 +62,25 @@ jobs:
         examples/hello_counter_go/counter.wasm
         examples/hello_counter_wat/counter.wasm
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.91.1
       - uses: Swatinem/rust-cache@v2
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
       - uses: mlugg/setup-zig@v2
         with:
           version: 0.17.0
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version: stable
+          cache: false
       - uses: acifani/setup-tinygo@v2
         with:
           tinygo-version: 0.43.0
-          binaryen-version: version_133
+          binaryen-version: "133"
 
       - name: Assembler for the WebAssembly text example
         run: cargo install wasm-tools --locked
@@ -106,7 +110,7 @@ jobs:
     name: documentation
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.91.1
