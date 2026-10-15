@@ -225,6 +225,7 @@ pub struct Health {
     /// `"ok"` when the node is serving.
     pub status: String,
     /// The tick the network is on.
+    #[serde(default)]
     pub tick: u64,
     /// The node's software version.
     #[serde(default)]

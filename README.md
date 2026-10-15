@@ -10,7 +10,9 @@ Retium signs with **ML-DSA-44** (FIPS 204), a post-quantum scheme. Keys and sign
 use retium_sdk::{key::SecretKey, rpc::Client, tx};
 
 let key = SecretKey::read_key_file("my-wallet.sk")?;
-let client = Client::new(retium_sdk::rpc::PUBLIC_RPC)?;
+let client = Client::builder(retium_sdk::rpc::PUBLIC_RPC)
+    .api_key(std::env::var("RETIUM_API_KEY")?) // needed to send transactions
+    .build()?;
 
 let wallet = client.wallet(&key.address()).await?.expect("funded account");
 println!("balance {} RTM", wallet.balance_rtm);
@@ -38,7 +40,7 @@ There is no template collection here on purpose. Retium contracts are small and 
 ```bash
 git clone https://github.com/Retium-Org/retium-sdk
 cd retium-sdk
-cargo install --path crates/retium-sdk       # the `retium` command
+cargo install --locked --path crates/retium-sdk       # the `retium` command
 rustup target add wasm32-unknown-unknown      # to build contracts
 ```
 
@@ -104,7 +106,7 @@ Open [retium.net/api-keys](https://retium.net/api-keys), connect your wallet and
 export RETIUM_API_KEY=rk_...          # PowerShell: $env:RETIUM_API_KEY = "rk_..."
 ```
 
-Pass it through the environment, never as a command-line argument. Once you have one key, `retium api-key new <label>`, `retium api-key list` and `retium api-key revoke <hash>` manage the rest from the command line.
+Pass it through the environment, never as a command-line argument. Once you have one key, `retium api-key new <label>`, `retium api-key list`, `retium api-key revoke <hash>` and `retium api-key upgrade` manage the rest from the command line.
 
 ### 5. Deploy the example
 

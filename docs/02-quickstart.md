@@ -7,7 +7,7 @@ From nothing to a deployed contract on the public testnet. Expect about fifteen 
 ```bash
 git clone https://github.com/Retium-Org/retium-sdk
 cd retium-sdk
-cargo install --path crates/retium-sdk
+cargo install --locked --path crates/retium-sdk
 rustup target add wasm32-unknown-unknown
 ```
 

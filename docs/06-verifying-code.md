@@ -37,7 +37,7 @@ Inside a contract, `env::code_hash_of(other_contract)` gives the same value, so 
 
 ## Making your contract verifiable
 
-The same source must produce the same bytes on someone else's machine. Four things make that true.
+The same source must produce the same bytes on someone else's machine. Five things make that true.
 
 1. **Pin the toolchain.** This repo's `rust-toolchain.toml` does it. Ship one with your project.
 2. **Commit your `Cargo.lock`.** A different dependency version gives different bytes.
@@ -52,12 +52,22 @@ The same source must produce the same bytes on someone else's machine. Four thin
    strip = true
    ```
 
-4. **Publish the hash and the exact build command** with your release, next to the contract id.
+4. **Build with fixed paths.** A plain build writes the folders of your source and of Cargo's downloads into the wasm, for panic messages. Those folders contain your user name, so the bytes change from one machine to the next and the module shows who built it. Map them to fixed names.
+
+   ```bash
+   RUSTFLAGS="--remap-path-prefix=$PWD=/src --remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=/cargo" \
+     cargo build --release --locked --target wasm32-unknown-unknown -p hello_counter
+   ```
+
+   Build on Linux or macOS. Windows writes paths with backslashes and cannot produce the same bytes, so on Windows build inside WSL.
+
+5. **Publish the hash and the exact build command** with your release, next to the contract id.
 
    ```
    contract  c16837bf...
    code hash c439ee71...
-   built with rustc 1.91.1, cargo build --release --target wasm32-unknown-unknown -p hello_counter
+   built with rustc 1.91.1 on Linux, paths remapped as above,
+   cargo build --release --locked --target wasm32-unknown-unknown -p hello_counter
    ```
 
 If you post-process the wasm (with `wasm-opt`, for example), pin that tool's version too and say so. Otherwise nobody can reproduce your bytes.

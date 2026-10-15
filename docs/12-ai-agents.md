@@ -21,7 +21,7 @@ Most coding assistants read a file named `AGENTS.md` from the repository root wi
 
 > Read AGENTS.md in this repository and follow it. Then install the retium tool and check the network is up.
 
-The agent runs `cargo install --path crates/retium-sdk` and `retium health`. It needs Rust 1.85 or newer and git on the machine, nothing else.
+The agent runs `cargo install --locked --path crates/retium-sdk` and `retium health`. It needs Rust 1.85 or newer and git on the machine, nothing else.
 
 ## 2. What the agent will ask you for
 

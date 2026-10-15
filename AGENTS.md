@@ -27,7 +27,7 @@ Needs Rust 1.85 or newer and git.
 ```bash
 git clone https://github.com/Retium-Org/retium-sdk
 cd retium-sdk
-cargo install --path crates/retium-sdk          # installs the `retium` command
+cargo install --locked --path crates/retium-sdk          # installs the `retium` command
 rustup target add wasm32-unknown-unknown         # only needed to build contracts
 retium health                                    # expect: ok, tick N, node ...
 ```
@@ -40,6 +40,7 @@ Settings come from environment variables, so set them once per session.
 | `RETIUM_API_KEY` | developer API key, starts with `rk_` | none |
 | `RETIUM_RPC` | endpoint | `https://rpc.retium.org` |
 | `RETIUM_FEE` | `RTM` or `RTD` for gas | `RTM` |
+| `RETIUM_CHAIN` | chain id to sign for, leave it unset | `devnet` (3), the public testnet |
 
 The examples use `export`. In Windows PowerShell write `$env:RETIUM_KEY = "$PWD\agent-wallet.sk"` instead. On Linux, `cargo install` needs `libssl-dev` and `pkg-config`.
 

@@ -6,7 +6,9 @@ Rust client for the [Retium](https://retium.org) blockchain. Accounts, addresses
 use retium_sdk::{key::SecretKey, rpc::Client, tx};
 
 let key = SecretKey::read_key_file("wallet.sk")?;
-let client = Client::new(retium_sdk::rpc::PUBLIC_RPC)?;
+let client = Client::builder(retium_sdk::rpc::PUBLIC_RPC)
+    .api_key(std::env::var("RETIUM_API_KEY")?) // needed to send transactions
+    .build()?;
 let sent = tx::transfer(&client, &key, "rete...", "1.5").await?;
 ```
 

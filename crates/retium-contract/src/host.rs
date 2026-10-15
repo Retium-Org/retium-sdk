@@ -79,7 +79,7 @@ extern "C" {
     ) -> i32;
 }
 
-// ── Off-chain stubs, so handlers can be unit-tested and documented ──────────
+// Off-chain stubs, so handlers can be unit-tested and documented.
 
 #[cfg(not(target_arch = "wasm32"))]
 mod offchain {

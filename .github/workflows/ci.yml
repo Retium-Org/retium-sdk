@@ -58,6 +58,16 @@ jobs:
       - name: Run the example the way the runtime does
         run: node examples/run-as-runtime.mjs target/wasm32-unknown-unknown/release/hello_counter.wasm
 
+      # The build docs/06-verifying-code.md documents. Linux and macOS must
+      # print the same code hash.
+      - name: Reproducible build
+        if: runner.os != 'Windows'
+        run: |
+          RUSTFLAGS="-D warnings --remap-path-prefix=$PWD=/src --remap-path-prefix=${CARGO_HOME:-$HOME/.cargo}=/cargo" \
+            cargo build --release --locked --target wasm32-unknown-unknown -p hello_counter
+          cargo run -q -p retium-sdk --bin retium -- key new ci.sk > /dev/null
+          cargo run -q -p retium-sdk --bin retium -- deploy target/wasm32-unknown-unknown/release/hello_counter.wasm --dry-run --key ci.sk
+
   other-languages:
     name: contracts in AssemblyScript, C, Zig, Go and WebAssembly text
     runs-on: ubuntu-latest

@@ -7,6 +7,10 @@ Retium's contract model is small, and this page covers all of it.
 There is one entry point. The chain hands you a call and reads back a reply.
 
 ```rust
+#![cfg_attr(target_arch = "wasm32", no_std)]
+extern crate alloc;
+
+use alloc::format;
 use retium_contract::{entrypoint, error, ok, storage, Call, Reply};
 
 entrypoint!(handle);
@@ -26,6 +30,30 @@ pub fn handle(call: Call) -> Reply {
     }
 }
 ```
+
+A contract is a library crate built for `wasm32-unknown-unknown`. On wasm it has no standard library, because `retium-contract` brings its own allocator and panic handler, so keep the first lines above as they are. Its `Cargo.toml` looks like this.
+
+```toml
+[package]
+name = "notes"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+retium-contract = { git = "https://github.com/Retium-Org/retium-sdk" }
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
+```
+
+`cdylib` produces the wasm module, and `rlib` lets `cargo test` run your handlers on your own machine. Build with `cargo build --release --target wasm32-unknown-unknown`.
 
 A call gives you four things.
 

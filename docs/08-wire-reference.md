@@ -242,7 +242,7 @@ The chain uses the bottom of your memory. The input lands at offset 0 and the re
 | C and C++ with clang | `-Wl,--stack-first -Wl,-z,stack-size=1048576`. Without it wasm-ld puts data at 1024. |
 | C and C++ with `zig cc` / `zig c++`, and Zig | Already so, the same layout as Rust. |
 | AssemblyScript | `--memoryBase 65536` |
-| Go (TinyGo, `wasm-unknown`) | Already so, with a 64 KiB stack first. Keep stack use modest. |
+| Go (TinyGo, `wasm-unknown`) | A 64 KiB stack comes first, so the input lands inside it. Refuse inputs over a few KiB and keep stack use modest, because a long input overwrites the stack. |
 | WebAssembly text | Every `data` segment at 65536 or above, and at least 2 pages of memory. |
 
 Import only the host functions below. The chain instantiates the module with exactly these, so a module that imports anything else, such as AssemblyScript's default `abort` or a WASI function, fails to instantiate.
