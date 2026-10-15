@@ -40,7 +40,7 @@ The seed is shown once. The key file holds the same secret. Back up one or both,
 Point the tool at your key so you can stop typing `--key`.
 
 ```bash
-export RETIUM_KEY=$PWD/my-wallet.sk      # Windows: setx RETIUM_KEY %CD%\my-wallet.sk
+export RETIUM_KEY=$PWD/my-wallet.sk      # PowerShell: $env:RETIUM_KEY = "$PWD\my-wallet.sk"
 retium balance
 ```
 
@@ -76,7 +76,7 @@ Reads are free and need no key. Anything that sends a transaction needs one.
 Open [retium.net/api-keys](https://retium.net/api-keys), connect your wallet and create a key. The free tier allows 100,000 requests a day and 5 a second. The secret starts with `rk_` and is shown once, so copy it then.
 
 ```bash
-export RETIUM_API_KEY=rk_...
+export RETIUM_API_KEY=rk_...             # PowerShell: $env:RETIUM_API_KEY = "rk_..."
 ```
 
 Pass it through the environment, not as a command-line argument. With one key in place, `retium api-key new`, `list`, `revoke` and `upgrade` manage the rest.

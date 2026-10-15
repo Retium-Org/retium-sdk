@@ -14,8 +14,15 @@ env:
 
 jobs:
   check:
-    name: format, lint, test
-    runs-on: ubuntu-latest
+    name: format, lint, test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v5
       # The toolchain rust-toolchain.toml pins, so CI builds the bytes a
@@ -43,7 +50,7 @@ jobs:
       - name: Check the contract is deployable
         run: |
           wasm=target/wasm32-unknown-unknown/release/hello_counter.wasm
-          size=$(stat -c%s "$wasm")
+          size=$(wc -c < "$wasm" | tr -d ' ')
           echo "contract is $size bytes"
           test "$size" -le 1048576
 

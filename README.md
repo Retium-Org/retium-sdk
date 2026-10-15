@@ -2,6 +2,8 @@
 
 Build on [Retium](https://retium.org). Create accounts, send transactions and write smart contracts. The SDK is Rust. Contracts are WebAssembly and can be written in Rust, AssemblyScript, C, C++, Zig, Go or anything else that produces a wasm module, and `examples/` has the same contract in each.
 
+**Retium is a public testnet.** Its coins have no value, and the network is reset from time to time, usually with a new release. A reset clears every balance, contract and API key on the chain. Your key file and address stay the same. Keep your contract source and deploy steps, and expect to fund, deploy and create an API key again after a reset.
+
 Retium signs with **ML-DSA-44** (FIPS 204), a post-quantum scheme. Keys and signatures are bigger than the elliptic-curve ones you may be used to (a public key is 1,312 bytes, a signature 2,421), but the work has the same shape. Build a payload, hash it, sign it, send it.
 
 ```rust
@@ -40,6 +42,8 @@ cargo install --path crates/retium-sdk       # the `retium` command
 rustup target add wasm32-unknown-unknown      # to build contracts
 ```
 
+Works on Linux, macOS and Windows. On Linux, install OpenSSL headers and `pkg-config` first (`sudo apt install libssl-dev pkg-config` on Debian and Ubuntu, `sudo dnf install openssl-devel pkgconf` on Fedora). macOS and Windows need nothing extra.
+
 Rust 1.85 or newer. The repo pins a toolchain in `rust-toolchain.toml` so contract builds are reproducible.
 
 ## Getting started
@@ -58,6 +62,13 @@ Keep the key file outside any repository you push. This repo ignores `*.sk` file
 
 ```bash
 export RETIUM_KEY=$PWD/my-wallet.sk
+retium balance
+```
+
+On Windows, in PowerShell:
+
+```powershell
+$env:RETIUM_KEY = "$PWD\my-wallet.sk"
 retium balance
 ```
 
@@ -87,7 +98,7 @@ Reads are free and need no key. Anything that sends a transaction needs one.
 Open [retium.net/api-keys](https://retium.net/api-keys), connect your wallet and create a key. The free tier allows 100,000 requests a day. The page shows the secret (it starts with `rk_`) once. Copy it then.
 
 ```bash
-export RETIUM_API_KEY=rk_...
+export RETIUM_API_KEY=rk_...          # PowerShell: $env:RETIUM_API_KEY = "rk_..."
 ```
 
 Pass it through the environment, never as a command-line argument. Once you have one key, `retium api-key new <label>`, `retium api-key list` and `retium api-key revoke <hash>` manage the rest from the command line.
@@ -128,6 +139,8 @@ The full walk-through is in [docs/02-quickstart.md](docs/02-quickstart.md).
 ## Testnet
 
 The public test network exists for building and breaking things. **RTM and RTD on it have no value.** Nobody should pay for testnet coins, and nothing here can be used to make them look like they are worth something.
+
+The network is reset from time to time, usually with a new release. A reset clears every balance, contract and API key, and you start again from step 3 above. What changed in each SDK version is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Contributing and reporting problems
 

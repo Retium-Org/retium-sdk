@@ -41,6 +41,10 @@ Settings come from environment variables, so set them once per session.
 | `RETIUM_RPC` | endpoint | `https://rpc.retium.org` |
 | `RETIUM_FEE` | `RTM` or `RTD` for gas | `RTM` |
 
+The examples use `export`. In Windows PowerShell write `$env:RETIUM_KEY = "$PWD\agent-wallet.sk"` instead. On Linux, `cargo install` needs `libssl-dev` and `pkg-config`.
+
+The testnet is reset from time to time. After a reset the account has no funds, deployed contracts are gone and the API key no longer works, so go back to Task 2.
+
 Options such as `--json`, `--fee RTD` and `--key` may go anywhere on the command line, before or after the subcommand. `--json` gives machine-readable output. Do not change `--chain`. The public testnet uses chain id 3, which is the default.
 
 ## Task 1. Make an account

@@ -53,6 +53,8 @@ What the chain protects you from, what it does not, and the habits that keep you
 
 RTM and RTD on the public test network have no value. Nobody should pay for them, and any presale or trade priced in testnet coins is a scam. Say so on your own site if you run one.
 
+The test network is reset from time to time, usually with a new release. A reset clears every balance, contract and API key. Do not build anything on it that cannot be deployed again from your own source.
+
 ## Reporting a problem
 
 Report security problems in this SDK or the network privately, by email to security@retium.org. See [SECURITY.md](../SECURITY.md).

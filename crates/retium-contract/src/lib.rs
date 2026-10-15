@@ -24,9 +24,12 @@
 //!
 //! 1. **Nothing in memory survives.** The module is rebuilt for every call, so
 //!    globals and `static` are wiped. State lives in [`storage`] only.
-//! 2. **Failure must trap to undo work.** Returning an error after you have
-//!    written state leaves those writes in place. Check first, write second, or
-//!    call [`fail`] to roll the whole call back.
+//! 2. **A refusal undoes the call.** When a user calls you and you return an
+//!    error, the chain discards every write, event and transfer of that call
+//!    and keeps your message as the reason. When another contract calls you, it
+//!    gets your error as an ordinary reply, and if it carries on your writes
+//!    stay. In a contract other contracts call, check first and write second,
+//!    or call [`fail`], which always undoes your writes.
 //! 3. **Be deterministic.** Every keeper runs your code and must reach the same
 //!    answer. No clocks, no randomness, no network, no floating point.
 //! 4. **Respect the limits.** A reply is at most [`MAX_OUTPUT`] bytes, a stored

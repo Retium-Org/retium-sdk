@@ -7,6 +7,7 @@
 - [AGENTS.md](AGENTS.md): how an agent works with Retium, from setup to deploy, with error handling
 - [README](README.md): install and getting started for people
 - [retium-agent.json](retium-agent.json): the network's facts in one JSON file (endpoint, chain id, fees, limits)
+- [CHANGELOG](CHANGELOG.md): what changed in each SDK version, and the testnet reset policy
 
 ## Docs
 
