@@ -57,7 +57,7 @@ retium --json key show                 # {"address":"rete...","public_key":"..."
 
 Do not use `--show-seed` unless the user asks to back up the seed, and then show it only to them. Keep the key file out of any git repository.
 
-If the user already has a Retium wallet and wants you to use it, they run `retium key import <file> --seed <64 hex>` themselves. Do not ask them to paste a seed to you.
+If the user already has a Retium wallet and wants you to use it, they run `retium key import <file>` themselves and paste the seed when it asks. Do not ask them to paste a seed to you.
 
 ## Task 2. Get funds and an API key (needs the user)
 

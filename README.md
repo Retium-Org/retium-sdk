@@ -75,8 +75,11 @@ retium balance
 Already have a Retium wallet? Copy its private key (64 hex characters) and turn it into a key file instead.
 
 ```bash
-retium key import my-wallet.sk --seed <64 hex characters>
+retium key import my-wallet.sk
+# seed (64 hex characters): paste it here and press Enter
 ```
+
+The seed is read from the terminal, never from the command line, so it does not end up in your shell history.
 
 ### 2. Add it to the Retium wallet
 

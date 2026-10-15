@@ -28,7 +28,7 @@ pub enum Error {
     /// A bare 32-byte seed where a key file was expected.
     #[error(
         "a key file is 37 bytes (RTSK, version, seed), this file is 32. \
-         Wrap a raw seed with `retium key import --seed <hex>`"
+         Wrap a raw seed with `retium key import <file>`"
     )]
     RawSeedFile,
 

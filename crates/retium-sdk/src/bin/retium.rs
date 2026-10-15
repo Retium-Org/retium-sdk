@@ -150,13 +150,12 @@ enum KeyCommand {
     },
     /// Show the address and public key of a key file.
     Show,
-    /// Write a key file from a 64-character seed you already have.
+    /// Write a key file from a 64-character seed you already have. The seed is
+    /// read from standard input, never from the command line, so it stays out
+    /// of shell history and the process list.
     Import {
         /// Where to write the key file.
         out: PathBuf,
-        /// The seed, as 64 hex characters.
-        #[arg(long)]
-        seed: String,
     },
 }
 
@@ -593,8 +592,8 @@ fn key_command(
                 &text,
             ))
         }
-        KeyCommand::Import { out: path, seed } => {
-            let key = SecretKey::from_hex_seed(seed)?;
+        KeyCommand::Import { out: path } => {
+            let key = SecretKey::from_hex_seed(&read_seed()?)?;
             key.write_key_file(path)?;
             Ok(out(
                 json,
@@ -616,6 +615,23 @@ fn key_command(
             ))
         }
     }
+}
+
+/// Reads one line from standard input, asking for it first when a person is
+/// typing. The line is wiped from memory when it is dropped.
+fn read_seed() -> retium_sdk::Result<zeroize::Zeroizing<String>> {
+    use std::io::{BufRead, IsTerminal, Write};
+    let stdin = std::io::stdin();
+    if stdin.is_terminal() {
+        eprint!("seed (64 hex characters): ");
+        let _ = std::io::stderr().flush();
+    }
+    let mut line = zeroize::Zeroizing::new(String::new());
+    stdin
+        .lock()
+        .read_line(&mut line)
+        .map_err(|e| Error::Io(format!("could not read the seed: {e}")))?;
+    Ok(line)
 }
 
 fn load_key(path: Option<&std::path::Path>) -> retium_sdk::Result<SecretKey> {
