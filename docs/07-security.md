@@ -57,4 +57,4 @@ The test network is reset from time to time, usually with a new release. A reset
 
 ## Reporting a problem
 
-Report security problems in this SDK or the network privately, by email to security@retium.org. See [SECURITY.md](../SECURITY.md).
+Report security problems privately, never in a public issue. For this SDK use the **Report a vulnerability** button on the repository's [Security tab](https://github.com/Retium-Org/retium-sdk/security). For the network, the wallet or a website, or if you cannot use GitHub, email security@retium.org. See [SECURITY.md](../SECURITY.md).

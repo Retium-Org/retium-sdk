@@ -2,7 +2,9 @@
 
 ## Reporting a vulnerability
 
-Please report security problems privately, not as a public issue. Email **security@retium.org**.
+Please report security problems privately, not as a public issue. Use the **Report a vulnerability** button on this repository's [Security tab](https://github.com/Retium-Org/retium-sdk/security). The report stays private between you and us until a fix is out.
+
+If you cannot use GitHub, or the problem is in the network, the wallet or a website rather than this SDK, email **security@retium.org**.
 
 Include what you found, how to reproduce it, and what an attacker could do with it. Please give us reasonable time to fix an issue before publishing it.
 
