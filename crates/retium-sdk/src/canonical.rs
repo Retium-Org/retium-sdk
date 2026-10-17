@@ -19,8 +19,9 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Payload version.
-pub const VERSION: u8 = 5;
+/// Payload version. Version 6 (October 2026) adds the three key hashes at
+/// the end: one key per transaction, see [`crate::key`].
+pub const VERSION: u8 = 6;
 
 /// Gas paid in RTM (the default).
 pub const FEE_RTM: u8 = 0;
@@ -96,6 +97,18 @@ pub struct CanonicalPayload {
     /// The coin the gas is paid in: [`FEE_RTM`] or [`FEE_RTD`]. Signed, so a
     /// relay cannot change it.
     pub fee_currency: u8,
+    /// blake3 of the public key you will sign your NEXT transaction with
+    /// (key `nonce + 1` of your seed, [`crate::key::SecretKey::key_at`]). The
+    /// chain keeps this hash and accepts only that key next time. Zeros only
+    /// for a multisig vault, whose members rotate instead.
+    pub next_key_hash: [u8; 32],
+    /// blake3 of your identity key ([`crate::key::SecretKey::identity_key`]),
+    /// published once; zeros to leave it unchanged.
+    pub login_key_hash: [u8; 32],
+    /// blake3 of the first key of your co-signing chain
+    /// ([`crate::key::SecretKey::cosign_key`] at counter 0), published once;
+    /// zeros to leave it unchanged.
+    pub cosign_key_hash: [u8; 32],
 }
 
 impl CanonicalPayload {
@@ -126,7 +139,24 @@ impl CanonicalPayload {
             args_hash,
             declared: normalize(declared),
             fee_currency: FEE_RTM,
+            next_key_hash: [0u8; 32],
+            login_key_hash: [0u8; 32],
+            cosign_key_hash: [0u8; 32],
         }
+    }
+
+    /// The key hashes a transaction announces: the hash of the key due at
+    /// `nonce + 1`, and (once) the identity and co-signing key hashes.
+    pub fn with_key_hashes(
+        mut self,
+        next_key_hash: [u8; 32],
+        login_key_hash: Option<[u8; 32]>,
+        cosign_key_hash: Option<[u8; 32]>,
+    ) -> Self {
+        self.next_key_hash = next_key_hash;
+        self.login_key_hash = login_key_hash.unwrap_or([0u8; 32]);
+        self.cosign_key_hash = cosign_key_hash.unwrap_or([0u8; 32]);
+        self
     }
 
     /// Pay the gas in RTD instead of RTM ([`FEE_RTD`]), or back ([`FEE_RTM`]).

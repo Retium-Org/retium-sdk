@@ -31,6 +31,15 @@ pub struct Wallet {
     pub balance_pie: String,
     /// The next nonce to sign with.
     pub nonce: u64,
+    /// blake3 (hex) of the key the chain expects your next transaction to carry.
+    #[serde(default)]
+    pub next_key_hash: Option<String>,
+    /// blake3 (hex) of your published identity key, if any.
+    #[serde(default)]
+    pub login_key_hash: Option<String>,
+    /// Your co-signing chain state, if published: `{ "counter", "next_key_hash" }`.
+    #[serde(default)]
+    pub cosign: Option<serde_json::Value>,
 }
 
 impl Wallet {

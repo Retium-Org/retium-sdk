@@ -59,6 +59,10 @@ impl Options {
 struct Context {
     nonce: u64,
     balance_claim: u128,
+    /// The key hash the chain expects next (None for a wallet never seen).
+    expected_key_hash: Option<[u8; 32]>,
+    published_login: bool,
+    published_cosign: bool,
 }
 
 async fn context(client: &Client, address: &str) -> Result<Context> {
@@ -66,10 +70,60 @@ async fn context(client: &Client, address: &str) -> Result<Context> {
         Some(w) => Ok(Context {
             nonce: w.nonce,
             balance_claim: w.balance_atomic()?,
+            expected_key_hash: w
+                .next_key_hash
+                .as_deref()
+                .and_then(|h| hex::decode(h).ok())
+                .and_then(|b| b.try_into().ok()),
+            published_login: w.login_key_hash.is_some(),
+            published_cosign: w.cosign.as_ref().map(|c| !c.is_null()).unwrap_or(false),
         }),
         None => Err(Error::Invalid(format!(
             "the chain has no record of {address}, it needs funds before it can send anything"
         ))),
+    }
+}
+
+/// One key per transaction. Signs `payload` with key `ctx.nonce` of `key`'s
+/// seed, after checking that is the key the chain expects, and returns the
+/// signature with the key fields every body carries: `public_key`,
+/// `next_key_hash`, and on the first transaction `login_key_hash` and
+/// `cosign_key_hash`.
+fn signed_fields(key: &SecretKey, payload: CanonicalPayload, ctx: &Context) -> Result<(CanonicalPayload, serde_json::Value)> {
+    use crate::key::key_hash;
+    let signing = key.key_at(ctx.nonce);
+    if let Some(expected) = ctx.expected_key_hash {
+        if key_hash(&signing.public_key()) != expected {
+            return Err(Error::Invalid(format!(
+                "the chain expects a different key at nonce {}. This is not the seed of {}, or the wallet moved on",
+                ctx.nonce,
+                key.address()
+            )));
+        }
+    }
+    let next = key_hash(&key.key_at(ctx.nonce + 1).public_key());
+    let login = (!ctx.published_login).then(|| key_hash(&key.identity_key().public_key()));
+    let cosign = (!ctx.published_cosign).then(|| key_hash(&key.cosign_key(0).public_key()));
+    let payload = payload.with_key_hashes(next, login, cosign);
+    let mut fields = json!({
+        "signature": signing.sign_hex(&payload.signing_hash()),
+        "public_key": signing.public_key().to_hex(),
+        "next_key_hash": hex::encode(next),
+    });
+    if let Some(l) = login {
+        fields["login_key_hash"] = json!(hex::encode(l));
+    }
+    if let Some(c) = cosign {
+        fields["cosign_key_hash"] = json!(hex::encode(c));
+    }
+    Ok((payload, fields))
+}
+
+fn merge(body: &mut serde_json::Value, fields: serde_json::Value) {
+    if let (Some(b), Some(f)) = (body.as_object_mut(), fields.as_object()) {
+        for (k, v) in f {
+            b.insert(k.clone(), v.clone());
+        }
     }
 }
 
@@ -104,7 +158,8 @@ pub async fn transfer_with(
         ctx.nonce,
         ctx.balance_claim,
     ));
-    let body = json!({
+    let (payload, fields) = signed_fields(key, payload, &ctx)?;
+    let mut body = json!({
         "from": from,
         "to": to,
         "amount": atomic.to_string(),
@@ -112,9 +167,8 @@ pub async fn transfer_with(
         "sender_balance_claim": ctx.balance_claim.to_string(),
         "declared": payload.declared,
         "fee_currency": payload.fee_currency_name(),
-        "signature": key.sign_hex(&payload.signing_hash()),
-        "public_key": key.public_key().to_hex(),
     });
+    merge(&mut body, fields);
     client.submit("/api/wallet/send", &body).await
 }
 
@@ -153,6 +207,7 @@ pub async fn deploy_with(
         ctx.nonce,
         ctx.balance_claim,
     ));
+    let (payload, fields) = signed_fields(key, payload, &ctx)?;
 
     use base64_lite::encode as b64;
     let mut body = json!({
@@ -162,9 +217,8 @@ pub async fn deploy_with(
         "sender_balance_claim": ctx.balance_claim.to_string(),
         "declared": payload.declared,
         "fee_currency": payload.fee_currency_name(),
-        "signature": key.sign_hex(&payload.signing_hash()),
-        "public_key": key.public_key().to_hex(),
     });
+    merge(&mut body, fields);
     if let Some(meta) = metadata {
         body["metadata"] = meta.clone();
     }
@@ -230,6 +284,7 @@ pub async fn call_with(
         ctx.nonce,
         ctx.balance_claim,
     ));
+    let (payload, fields) = signed_fields(key, payload, &ctx)?;
 
     let mut body = json!({
         "from": from,
@@ -240,9 +295,8 @@ pub async fn call_with(
         "sender_balance_claim": ctx.balance_claim.to_string(),
         "declared": payload.declared,
         "fee_currency": payload.fee_currency_name(),
-        "signature": key.sign_hex(&payload.signing_hash()),
-        "public_key": key.public_key().to_hex(),
     });
+    merge(&mut body, fields);
     if value > 0 {
         body["amount"] = json!(value.to_string());
     }
@@ -344,7 +398,8 @@ async fn api_key_op(
     // The hash covers the exact payload text, so the same string is signed
     // and sent.
     let signed = CanonicalPayload::api_key(&from, payload, amount, ctx.nonce, ctx.balance_claim);
-    let body = json!({
+    let (signed, fields) = signed_fields(key, signed, &ctx)?;
+    let mut body = json!({
         "address": from,
         "payload": payload,
         "amount": amount.to_string(),
@@ -352,9 +407,8 @@ async fn api_key_op(
         "sender_balance_claim": ctx.balance_claim.to_string(),
         "declared": signed.declared,
         "fee_currency": signed.fee_currency_name(),
-        "signature": key.sign_hex(&signed.signing_hash()),
-        "public_key": key.public_key().to_hex(),
     });
+    merge(&mut body, fields);
     client.submit("/api/developer/key", &body).await
 }
 

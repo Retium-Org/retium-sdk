@@ -109,6 +109,22 @@ pub struct SecretKey {
     inner: ml_dsa::SigningKey<Params>,
 }
 
+/// `blake3(domain || seed || context || index)`: the seed of one derived key.
+/// The same bytes the node derives (`src/core/key_chain.rs`).
+pub fn derive_seed(seed: &[u8; SEED_LEN], domain: &[u8], context: &[u8], index: u64) -> [u8; SEED_LEN] {
+    let mut h = blake3::Hasher::new();
+    h.update(domain);
+    h.update(seed);
+    h.update(context);
+    h.update(&index.to_le_bytes());
+    *h.finalize().as_bytes()
+}
+
+/// The hash the chain keeps of a public key: blake3 of its raw bytes.
+pub fn key_hash(key: &PublicKey) -> [u8; 32] {
+    *blake3::hash(key.as_bytes()).as_bytes()
+}
+
 impl Drop for SecretKey {
     fn drop(&mut self) {
         self.seed.zeroize();
@@ -210,6 +226,33 @@ impl SecretKey {
     /// The seed, for backup. Handle it like the secret it is.
     pub fn seed_hex(&self) -> String {
         hex::encode(self.seed)
+    }
+
+    /// The seed itself (what the 24 words encode).
+    pub fn seed(&self) -> [u8; SEED_LEN] {
+        self.seed
+    }
+
+    /// One key per transaction: the key you sign your transaction at `nonce`
+    /// with. Key 0 is this key itself, so your address never changes; key `i`
+    /// is derived from the seed and `i`. The chain only ever learns the hash of
+    /// your next key, so a key seen on the chain is already used up.
+    pub fn key_at(&self, nonce: u64) -> SecretKey {
+        if nonce == 0 {
+            return Self::from_seed(&self.seed);
+        }
+        Self::from_seed(&derive_seed(&self.seed, b"retium.key.wallet.v1", b"", nonce))
+    }
+
+    /// Your identity key: site sign-in, message signing, hosted-node ownership.
+    /// Fixed, and never moves money.
+    pub fn identity_key(&self) -> SecretKey {
+        Self::from_seed(&derive_seed(&self.seed, b"retium.key.login.v1", b"", 0))
+    }
+
+    /// Key `counter` of your co-signing chain (multisig member signatures).
+    pub fn cosign_key(&self, counter: u64) -> SecretKey {
+        Self::from_seed(&derive_seed(&self.seed, b"retium.key.member.v1", b"", counter))
     }
 
     /// The matching public key.
