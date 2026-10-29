@@ -111,7 +111,12 @@ pub struct SecretKey {
 
 /// `blake3(domain || seed || context || index)`: the seed of one derived key.
 /// The same bytes the node derives (`src/core/key_chain.rs`).
-pub fn derive_seed(seed: &[u8; SEED_LEN], domain: &[u8], context: &[u8], index: u64) -> [u8; SEED_LEN] {
+pub fn derive_seed(
+    seed: &[u8; SEED_LEN],
+    domain: &[u8],
+    context: &[u8],
+    index: u64,
+) -> [u8; SEED_LEN] {
     let mut h = blake3::Hasher::new();
     h.update(domain);
     h.update(seed);
@@ -241,7 +246,12 @@ impl SecretKey {
         if nonce == 0 {
             return Self::from_seed(&self.seed);
         }
-        Self::from_seed(&derive_seed(&self.seed, b"retium.key.wallet.v1", b"", nonce))
+        Self::from_seed(&derive_seed(
+            &self.seed,
+            b"retium.key.wallet.v1",
+            b"",
+            nonce,
+        ))
     }
 
     /// Your identity key: site sign-in, message signing, hosted-node ownership.
@@ -252,7 +262,12 @@ impl SecretKey {
 
     /// Key `counter` of your co-signing chain (multisig member signatures).
     pub fn cosign_key(&self, counter: u64) -> SecretKey {
-        Self::from_seed(&derive_seed(&self.seed, b"retium.key.member.v1", b"", counter))
+        Self::from_seed(&derive_seed(
+            &self.seed,
+            b"retium.key.member.v1",
+            b"",
+            counter,
+        ))
     }
 
     /// The matching public key.

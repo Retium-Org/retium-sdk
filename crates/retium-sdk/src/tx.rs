@@ -89,7 +89,11 @@ async fn context(client: &Client, address: &str) -> Result<Context> {
 /// signature with the key fields every body carries: `public_key`,
 /// `next_key_hash`, and on the first transaction `login_key_hash` and
 /// `cosign_key_hash`.
-fn signed_fields(key: &SecretKey, payload: CanonicalPayload, ctx: &Context) -> Result<(CanonicalPayload, serde_json::Value)> {
+fn signed_fields(
+    key: &SecretKey,
+    payload: CanonicalPayload,
+    ctx: &Context,
+) -> Result<(CanonicalPayload, serde_json::Value)> {
     use crate::key::key_hash;
     let signing = key.key_at(ctx.nonce);
     if let Some(expected) = ctx.expected_key_hash {

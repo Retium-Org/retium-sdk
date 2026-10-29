@@ -132,10 +132,18 @@ fn keys_per_nonce_and_signed_key_hashes() {
     let k = SecretKey::from_seed(&[9u8; 32]);
     assert_eq!(k.key_at(0).public_key().to_hex(), k.public_key().to_hex());
     assert_ne!(k.key_at(1).public_key().to_hex(), k.public_key().to_hex());
-    assert_ne!(k.key_at(1).public_key().to_hex(), k.key_at(2).public_key().to_hex());
-    assert_ne!(k.identity_key().public_key().to_hex(), k.cosign_key(0).public_key().to_hex());
+    assert_ne!(
+        k.key_at(1).public_key().to_hex(),
+        k.key_at(2).public_key().to_hex()
+    );
+    assert_ne!(
+        k.identity_key().public_key().to_hex(),
+        k.cosign_key(0).public_key().to_hex()
+    );
     let p = CanonicalPayload::transfer(&k.address(), &k.address(), 1, 0, 0);
     let h0 = p.clone().signing_hash();
-    let h1 = p.with_key_hashes(key_hash(&k.key_at(1).public_key()), None, None).signing_hash();
+    let h1 = p
+        .with_key_hashes(key_hash(&k.key_at(1).public_key()), None, None)
+        .signing_hash();
     assert_ne!(h0, h1, "the next key hash is part of the signed bytes");
 }

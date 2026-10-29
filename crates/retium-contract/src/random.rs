@@ -80,7 +80,10 @@ pub fn callback(call: &Call) -> Result<(String, [u8; 32]), Error> {
     let hex = call.arg(1)?;
     let bytes = crate::crypto::from_hex(hex)?;
     if bytes.len() != 32 {
-        return Err(format!("random number must be 32 bytes, got {}", bytes.len()));
+        return Err(format!(
+            "random number must be 32 bytes, got {}",
+            bytes.len()
+        ));
     }
     let mut number = [0u8; 32];
     number.copy_from_slice(&bytes);
