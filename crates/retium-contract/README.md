@@ -1,6 +1,6 @@
 # retium-contract
 
-Write [Retium](https://retium.org) smart contracts in Rust. Storage, events, cross-contract calls and the `on_use` entry point, as safe wrappers over the chain's host functions.
+Write [Retium](https://retium.org) smart contracts in Rust. Storage, events, cross-contract calls, native random numbers and the `on_use` entry point, as safe wrappers over the chain's host functions.
 
 ```rust
 #![cfg_attr(target_arch = "wasm32", no_std)]

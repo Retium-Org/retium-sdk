@@ -31,7 +31,8 @@
 //!    stay. In a contract other contracts call, check first and write second,
 //!    or call [`fail`], which always undoes your writes.
 //! 3. **Be deterministic.** Every keeper runs your code and must reach the same
-//!    answer. No clocks, no randomness, no network, no floating point.
+//!    answer. No clocks, no randomness of your own, no network, no floating
+//!    point. For a random number ask the chain, see [`random`].
 //! 4. **Respect the limits.** A reply is at most [`MAX_OUTPUT`] bytes, a stored
 //!    value at most [`MAX_VALUE`], an event payload at most [`MAX_EVENT_DATA`].
 //! 5. **You cannot reach into a caller's wallet.** The only RTM you receive is
@@ -59,6 +60,7 @@ pub mod env;
 pub mod events;
 pub(crate) mod host;
 pub(crate) mod json;
+pub mod random;
 pub mod storage;
 
 #[cfg(target_arch = "wasm32")]

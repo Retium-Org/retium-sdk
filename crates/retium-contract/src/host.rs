@@ -77,6 +77,7 @@ extern "C" {
         cap_ptr: *const u8,
         cap_len: i32,
     ) -> i32;
+    pub fn request_random(out_ptr: *mut u8, out_max_len: i32) -> i32;
 }
 
 // Off-chain stubs, so handlers can be unit-tested and documented.
@@ -153,6 +154,9 @@ mod offchain {
         -1
     }
     pub unsafe fn supports_capability(_: *const u8, _: i32, _: *const u8, _: i32) -> i32 {
+        -1
+    }
+    pub unsafe fn request_random(_: *mut u8, _: i32) -> i32 {
         -1
     }
 }

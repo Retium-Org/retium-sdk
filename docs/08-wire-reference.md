@@ -123,6 +123,8 @@ For `api_key`, `blake3` of the payload JSON text, byte for byte as sent. For `tr
 | `GET /api/contract/{id}/query?method=M&args=a,b` | a free read-only call, `{ok, contract_id, method, output, view}` |
 | `GET /api/contract/{id}/events?after=0&limit=100` | events in the order they were applied, `{events, next, more}`. Ask again with `after=next` until `more` is false. `type=` filters by event type. |
 | `GET /api/contract/{id}/storage/{key}` | one storage value |
+| `GET /api/vrf/request/{tx_id}` | the random number a transaction asked for: `{status, request_tx, contract, block}` while `pending`, plus `{keeper, index, secret, number, callback_error, seq}` once `done` |
+| `GET /api/vrf/keeper/{id}` | a keeper's current lock for random numbers, `{keeper, lock, index, epoch, genesis_lock}` |
 | `GET /api/developer/tiers` | the API key price list |
 | `GET /api/developer/keys/{address}` | the keys an address registered, by hash |
 
@@ -280,8 +282,15 @@ Imported from module `env`. Pointers are offsets into your memory and every leng
 | `get_contract_version` | `(id_ptr, id_len, out_ptr, out_max) -> i32` | the version a contract declares |
 | `set_contract_version` | `(ver_ptr, ver_len) -> i32` | `0` or `-1`, up to 64 bytes |
 | `supports_capability` | `(id_ptr, id_len, cap_ptr, cap_len) -> i32` | `1`, `0` or `-1`. A claim, not a guarantee. |
+| `request_random` | `(out_ptr, out_max) -> i32` | bytes of the request id (this transaction's id), `-1` refused. Costs 50,000 fuel. Next testnet release. |
 
-There is no clock, no randomness, no network and no file access. `call_contract` and `call_contract_value` take arguments as a JSON array of strings, for example `["rete...","10"]`, and answer `-1` for anything else. The contract you call receives them in its own `args`. When the contract you call answers with an error reply, you get that reply, and its writes stay unless your call fails too.
+There is no clock, no randomness of your own, no network and no file access. `call_contract` and `call_contract_value` take arguments as a JSON array of strings, for example `["rete...","10"]`, and answer `-1` for anything else. The contract you call receives them in its own `args`. When the contract you call answers with an error reply, you get that reply, and its writes stay unless your call fails too.
+
+### Random numbers
+
+`request_random` books a number for the transaction and writes the request id, which is the transaction id. After the transaction is final the chain calls `on_use` again with action `on_random`, caller `retium-vrf` and args `[request_id, number]`, `number` being 64 hex characters. That call has the ordinary fuel budget and costs the sender no gas. If it fails, the request is still closed. `request_random` answers `-1` in a free read, inside `on_random`, and when another contract in the same transaction already asked. The import exists from the next testnet release. A module that imports it cannot be instantiated before that.
+
+The number is `blake3("retium.vrf.number.v1" || request_id || secret)`, `secret` being the 32 bytes the keeper revealed for this request. `GET /api/vrf/request/{tx_id}` returns the keeper, the secret and the number. `blake3(secret)` is the lock the keeper held before this reveal. `GET /api/vrf/keeper/{id}` returns the lock it holds now, which is the last secret it revealed.
 
 ### Execution rules
 
@@ -291,6 +300,7 @@ There is no clock, no randomness, no network and no file access. `call_contract`
 * Work is metered in fuel, 100,000,000 per transaction. Running out fails the call, and the sender still pays gas and uses the nonce. A cross-contract call costs 50,000 and `sig_verify` 80,000 before anything else.
 * A transaction may run for 5 seconds and a free read for 2.
 * A contract can send its own RTM but can never take RTM from the caller's wallet. The only money a caller gives you is `value`, which they signed.
+* A random number arrives in a separate `on_random` call after the transaction is final. Only caller `retium-vrf` delivers one.
 
 ### Limits
 

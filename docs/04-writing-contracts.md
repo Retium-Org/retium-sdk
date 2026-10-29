@@ -113,7 +113,7 @@ This changes when another contract calls you. The caller receives your error as 
 
 ## Rule 3. Be deterministic
 
-Every keeper runs your contract and must reach the same answer. There is no clock, no randomness and no network. Use `env::block_height()` or `env::block_time_ms()` when you need a notion of time, because those are agreed by the chain. Avoid floating point.
+Every keeper runs your contract and must reach the same answer. There is no clock, no randomness of your own and no network. Use `env::block_height()` or `env::block_time_ms()` when you need a notion of time, because those are agreed by the chain. For a random number, ask the chain (see [Random numbers](#random-numbers)). Avoid floating point.
 
 ## Rule 4. Money moves in one direction
 
@@ -186,6 +186,39 @@ if call::is_error_reply(&reply) {
 
 A contract cannot call itself, directly or in a circle.
 
+## Random numbers
+
+A contract asks the chain for a random number. The number arrives in a second call, with action `on_random`, after the transaction that asked is final.
+
+```rust
+use retium_contract::random;
+
+"roll" => {
+    let guess = call.arg_u128(0)?;
+    let id = random::request()?;                       // this transaction's id
+    storage::set(&format!("bet:{id}"), &format!("{}|{guess}", call.caller()))?;
+    ok(&id)
+}
+random::CALLBACK => {                                  // "on_random"
+    let (id, number) = random::callback(&call)?;       // refuses every caller but the chain
+    let face = random::in_range(&number, 6) + 1;
+    // settle the bet stored under `id`
+    ok(&face.to_string())
+}
+```
+
+`random::request` returns the request id, which is the id of the transaction that called you. It costs 50,000 fuel, like a cross-contract call. It fails in a free read, inside `on_random`, and when another contract in the same transaction asked first.
+
+The callback is a call of its own. It runs after your transaction, with the ordinary fuel budget, and the sender pays no gas for it. If it fails, the number still exists on chain and the request is closed. Keep the handler small.
+
+* **Take every bet in the transaction that asks.** A bet placed in a later transaction can be placed after the number is known.
+* **Settle only through `random::callback`.** It refuses any caller but the chain. A user can send a call named `on_random` too.
+* **The callback cannot ask again.** Ask from a new user transaction.
+
+A keeper reveals a secret, one per request, after the transaction is final. The number is derived from that secret and the request id. `GET /api/vrf/request/{tx_id}` returns the reveal, and the [wire reference](08-wire-reference.md#random-numbers) gives the check. The keeper that reveals sees the number before everyone else and can only refuse to reveal, which is visible on chain.
+
+Native random numbers arrive on the public testnet with the next release. Before that, a contract that uses them is refused at deploy, because the import does not exist.
+
 ## Testing before you deploy
 
 Handlers are ordinary Rust. Off-chain, storage reads return "not set", so you can test every decision a handler makes without a node.
@@ -223,6 +256,7 @@ The chain runs WebAssembly and does not know what produced it. The same counter 
 - [ ] Arithmetic uses the checked helpers (`add_u128`, `sub_u128`) or your own checks.
 - [ ] Loops are bounded.
 - [ ] Events are built with `emit_fields` or `json_string`.
+- [ ] Bets are taken in the transaction that asks for the number, and `on_random` goes through `random::callback`.
 - [ ] `rcp_metadata!` is present with all seven fields and weight 5 (in another language, the weight the dry run reports).
 - [ ] Tests cover the refusal paths, not just the happy path.
 - [ ] Built with `--release`, and the dry run passed.

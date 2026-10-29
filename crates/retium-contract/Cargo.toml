@@ -1,6 +1,6 @@
 [package]
 name = "retium-contract"
-description = "Write Retium smart contracts in Rust with storage, events, cross-contract calls and the on_use entry point"
+description = "Write Retium smart contracts in Rust with storage, events, cross-contract calls, native random numbers and the on_use entry point"
 keywords = ["retium", "blockchain", "smart-contracts", "wasm", "rcp-1"]
 categories = ["cryptography::cryptocurrencies", "wasm", "no-std"]
 readme = "README.md"
