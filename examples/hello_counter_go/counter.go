@@ -62,6 +62,9 @@ const (
 	countKey = "count"
 	maxStep  = 1000
 	maxReply = 4096
+	// The input lands in the lowest part of TinyGo's stack (see the README).
+	// Nothing this counter accepts is longer than a few hundred bytes.
+	maxInput = 4096
 )
 
 // main is required by the compiler and never runs on the chain.
@@ -72,6 +75,9 @@ func onUse(inputPtr, inputLen, outputPtr int32) int32 {
 	// The chain puts the input at offset 0, and address 0 is Go's nil, which no
 	// pointer may read through. The input is a JSON object, so byte 0 is `{`
 	// and nothing is lost by reading from byte 1.
+	if inputLen > maxInput {
+		return -1
+	}
 	input := ""
 	if inputLen > 1 {
 		input = unsafe.String((*byte)(unsafe.Pointer(uintptr(inputPtr)+1)), int(inputLen-1))

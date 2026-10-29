@@ -215,7 +215,7 @@ The callback is a call of its own. It runs after your transaction, with the ordi
 * **Settle only through `random::callback`.** It refuses any caller but the chain. A user can send a call named `on_random` too.
 * **The callback cannot ask again.** Ask from a new user transaction.
 
-A keeper reveals a secret, one per request, after the transaction is final. The number is derived from that secret and the request id. `GET /api/vrf/request/{tx_id}` returns the reveal, and the [wire reference](08-wire-reference.md#random-numbers) gives the check. The keeper that reveals sees the number before everyone else and can only refuse to reveal, which is visible on chain.
+A keeper reveals a secret, one per request, after the transaction is final, and anyone can verify the number on chain. `GET /api/vrf/request/{tx_id}` returns the reveal. The keeper that reveals sees the number before everyone else, so random numbers are as trustworthy as the keepers, the same as every block and balance.
 
 Random numbers are live on the public testnet since node release 3.0.31 (October 2026).
 

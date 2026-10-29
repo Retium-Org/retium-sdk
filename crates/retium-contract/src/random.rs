@@ -28,10 +28,10 @@
 //! on chain and the request is closed.
 //!
 //! A keeper reveals a secret, one per request, after the transaction is final,
-//! and the number is derived from that secret and the request id. The reveal
-//! is at `GET /api/vrf/request/{tx_id}`. The keeper that reveals sees the number
-//! before everyone else and can only refuse to reveal, which is visible on
-//! chain.
+//! and anyone can verify the number on chain. The reveal is at
+//! `GET /api/vrf/request/{tx_id}`. The keeper that reveals sees the number
+//! before everyone else, so random numbers are as trustworthy as the keepers,
+//! the same as every block and balance.
 
 use alloc::format;
 use alloc::string::String;

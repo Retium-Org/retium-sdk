@@ -141,7 +141,7 @@ For `api_key`, `blake3` of the payload JSON text, byte for byte as sent. For `tr
 | `GET /api/contract/{id}/events?after=0&limit=100` | events in the order they were applied, `{events, next, more}`. Ask again with `after=next` until `more` is false. `type=` filters by event type. |
 | `GET /api/contract/{id}/storage/{key}` | one storage value |
 | `GET /api/vrf/request/{tx_id}` | the random number a transaction asked for: `{status, request_tx, contract, block}` while `pending`, plus `{keeper, index, secret, number, callback_error, seq}` once `done` |
-| `GET /api/vrf/keeper/{id}` | a keeper's current lock for random numbers, `{keeper, lock, index, epoch, genesis_lock}` |
+| `GET /api/vrf/keeper/{id}` | a keeper's random number record, `{keeper, lock, index, epoch, genesis_lock}` |
 | `GET /api/developer/tiers` | the API key price list |
 | `GET /api/developer/keys/{address}` | the keys an address registered, by hash |
 
@@ -312,8 +312,6 @@ There is no clock, no randomness of your own, no network and no file access. `ca
 ### Random numbers
 
 `request_random` books a number for the transaction and writes the request id, which is the transaction id. After the transaction is final the chain calls `on_use` again with action `on_random`, caller `retium-vrf` and args `[request_id, number]`, `number` being 64 hex characters. That call has the ordinary fuel budget and costs the sender no gas. If it fails, the request is still closed. `request_random` answers `-1` in a free read, inside `on_random`, and when another contract in the same transaction already asked. The import is live on the public testnet since node release 3.0.31.
-
-The number is `blake3("retium.vrf.number.v1" || request_id || secret)`, `secret` being the 32 bytes the keeper revealed for this request. `GET /api/vrf/request/{tx_id}` returns the keeper, the secret and the number. `blake3(secret)` is the lock the keeper held before this reveal. `GET /api/vrf/keeper/{id}` returns the lock it holds now, which is the last secret it revealed.
 
 ### Execution rules
 
