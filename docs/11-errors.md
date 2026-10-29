@@ -27,6 +27,10 @@ The SDK turns 429 and 503 into `Error::Busy` and says the request is worth tryin
 | Message | Cause | Fix |
 |---|---|---|
 | `Nonce mismatch: got 4 but expected 5` | Another transaction from this account went first. | Send again. The SDK reads a fresh nonce each time. Do not send from one account in parallel. |
+| `Nonce 5 is already in flight for rete...` | The node already holds a transaction with this nonce. | Wait for it to end, then read the nonce again. If it was yours, nothing to do. |
+| `the public key is not the one the chain expects next (key already used, or wrong index)` | The transaction was signed with the wrong key: a key already used, key `i` for a different nonce, or another seed. | Read `next_key_hash` and `nonce` from `/api/wallet/{address}` and sign with that key. The SDK does this itself. |
+| `the chain expects a different key at nonce N` | The SDK found, before sending, that your seed does not produce the key the chain expects. | This key file is not the account's seed, or the account's keys moved on in another wallet. Check which seed you are using. |
+| `rpc busy, retry` | The node is under load. | Send the same transaction again in a moment. |
 | `Insufficient balance` | Not enough RTM for the amount plus gas. | Fund the account, or pay gas in RTD with `--fee RTD`. |
 | `gas in RTD: ...` | You chose RTD gas without enough RTD. | Fund RTD, or pay in RTM. |
 | `Signature verification failed` | The signed fields and the sent fields differ. | Use the SDK helpers. If you build requests yourself, see [Wire reference](08-wire-reference.md). |
@@ -63,6 +67,6 @@ The SDK turns 429 and 503 into `Error::Busy` and says the request is worth tryin
 
 ## When a transaction seems stuck
 
-A transaction stays `Pending` while the network works through its block. Later ticks carry more blocks, so waiting a few minutes is normal. `retium tx <id> --wait` keeps polling for up to ten minutes. A transaction that ends `Voided` will never run, because another transaction used its nonce. Send it again with a fresh nonce.
+A transaction normally reaches `HardFinal` within a second. One that is still `Pending` after ten seconds was most likely lost on the way, so send the same signed transaction again. The node refuses a duplicate it already holds (`Nonce N is already in flight`), which is harmless. `retium tx <id> --wait` keeps polling for up to ten minutes. A transaction that ends `Voided` will never run, because another transaction used its nonce. Send it again with a fresh nonce.
 
 Still stuck? Ask in the Retium Discord with the transaction id. Never post your seed or key file anywhere.

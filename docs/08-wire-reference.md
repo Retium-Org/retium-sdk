@@ -23,6 +23,17 @@ Reads are open and need no key. They are rate limited per address. Every `POST` 
 
 The key pair is FIPS 204 `ML-DSA.KeyGen_internal` from the 32-byte seed. The Retium wallet uses the same seed, so a key moves between the two by its 64 hex characters.
 
+**One key per transaction.** Key 0 is the key pair of the seed itself, and the address is derived from it. Key `i` is the key pair of a derived seed, and it signs the transaction with nonce `i`.
+
+```
+derived seed(i) = blake3("retium.key.wallet.v1" || seed || i as u64 little-endian)   i >= 1
+identity key    = blake3("retium.key.login.v1"  || seed || 0 as u64 little-endian)
+co-signing key  = blake3("retium.key.member.v1" || seed || counter as u64 little-endian)
+key hash        = blake3(public key)                                                 32 bytes
+```
+
+A transaction carries the public key it was signed with and `next_key_hash`, the key hash of key `nonce + 1`. The chain stores that hash and accepts only that key for the account's next transaction. `GET /api/wallet/{address}` returns the hash it expects (`next_key_hash`) and the nonce. An account the chain has not seen has no `next_key_hash`, and key 0 signs its first transaction. The identity key signs site logins and never signs a transaction. The co-signing key is used only by members of a 2FA or multisig vault.
+
 **Address**
 
 ```
@@ -41,7 +52,7 @@ The signed message is `blake3(bincode(payload))`, and the payload has these fiel
 
 | # | Field | Type |
 |---|---|---|
-| 1 | `version` | `u8`, currently `5` |
+| 1 | `version` | `u8`, currently `6` |
 | 2 | `chain_id` | `u32`, `3` on the public testnet |
 | 3 | `action` | string, `transfer`, `deploy`, `call` or `api_key` |
 | 4 | `sender` | string, your address |
@@ -53,6 +64,9 @@ The signed message is `blake3(bincode(payload))`, and the payload has these fiel
 | 10 | `args_hash` | 32 bytes, see below |
 | 11 | `declared` | list of strings, see below |
 | 12 | `fee_currency` | `u8`, the coin the gas is paid in, `0` RTM or `1` RTD (1.5 times the RTM fee) |
+| 13 | `next_key_hash` | 32 bytes, the key hash of key `nonce + 1`. Zeros only for a multisig vault, whose members rotate instead. |
+| 14 | `login_key_hash` | 32 bytes, the key hash of the identity key on the account's first transaction, zeros afterwards |
+| 15 | `cosign_key_hash` | 32 bytes, the key hash of co-signing key 0 on the account's first transaction, zeros afterwards |
 
 ### Encoding
 
@@ -66,7 +80,7 @@ Bincode with fixed-width integers, little-endian.
 A `transfer` of 1 RTM with nonce 0 therefore begins like this.
 
 ```
-05                          version 5
+06                          version 6
 03 00 00 00                 chain_id 3
 08 00 00 00 00 00 00 00     "transfer" is 8 bytes
 74 72 61 6e 73 66 65 72     "transfer"
@@ -82,6 +96,9 @@ A `transfer` of 1 RTM with nonce 0 therefore begins like this.
 03 00 00 00 00 00 00 00     declared has 3 entries
 ...                         each entry is a u64 length then the bytes
 00                          fee_currency 0 (RTM)
+...                         next_key_hash, 32 bytes
+...                         login_key_hash, 32 bytes (zeros after the first transaction)
+...                         cosign_key_hash, 32 bytes (zeros after the first transaction)
 ```
 
 ### `declared`
@@ -116,7 +133,7 @@ For `api_key`, `blake3` of the payload JSON text, byte for byte as sent. For `tr
 | Request | Answer |
 |---|---|
 | `GET /health` | `{status, tick, peers, version}` |
-| `GET /api/wallet/{address}` | `{address, balance_rtm, balance_pie, pending_incoming, nonce, ...}`. An account the chain has not seen answers with zero balances and nonce 0. |
+| `GET /api/wallet/{address}` | `{address, balance_rtm, balance_pie, pending_incoming, nonce, next_key_hash, login_key_hash, cosign, ...}`. An account the chain has not seen answers with zero balances, nonce 0 and no `next_key_hash`. |
 | `GET /api/wallet/{address}/tokens` | `{tokens: [{contract_id, name, symbol, decimals, balance}]}`, balance in the token's smallest unit |
 | `GET /api/transaction/{tx_id}` | `{finality, exec_status, exec_error, action, block_id, gas_breakdown, ...}` |
 | `GET /api/contract/{id}` | `{contract_id, deployer, code_hash, rcp_metadata, ...}`, 404 if there is no such contract |
@@ -128,7 +145,7 @@ For `api_key`, `blake3` of the payload JSON text, byte for byte as sent. For `tr
 | `GET /api/developer/tiers` | the API key price list |
 | `GET /api/developer/keys/{address}` | the keys an address registered, by hash |
 
-`balance_rtm` is decimal RTM, and `nonce` is the next nonce to sign. `finality` is one of `Pending`, `SoftFinal`, `HardFinal`, `Rejected` and `Voided`. For a deploy or a call that is `HardFinal`, `exec_status` is `ok`, `failed` (with the reason in `exec_error`) or `pending` while the contract has not run yet.
+`balance_rtm` is decimal RTM, `nonce` is the next nonce to sign, and `next_key_hash` is the hex key hash the next transaction must be signed with. `login_key_hash` is the published identity key hash, and `cosign` is `{counter, next_key_hash}` of the co-signing chain, both `null` until published. `finality` is one of `Pending`, `SoftFinal`, `HardFinal`, `Rejected` and `Voided`, and `HardFinal` normally arrives within a second of sending. For a deploy or a call that is `HardFinal`, `exec_status` is `ok`, `failed` (with the reason in `exec_error`) or `pending` while the contract has not run yet.
 
 The query endpoint does not decode its URL. Send the method and the comma-joined arguments as they are, using only letters, digits and `- _ . ~ :`. For anything else use a view (below).
 
@@ -142,8 +159,11 @@ All writes are `POST`, JSON in and JSON out, with an `X-API-Key` header. These f
 | `sender_balance_claim` | string | atomic units |
 | `declared` | array of strings | as above |
 | `fee_currency` | string | `"RTM"` (the default when absent) or `"RTD"`, and it must match the signed byte |
-| `signature` | string | hex, 4,842 characters |
-| `public_key` | string | hex, required on an account's first transaction, harmless afterwards |
+| `signature` | string | hex, 4,842 characters, made with key `nonce` |
+| `public_key` | string | hex, the public key of key `nonce`, required every time |
+| `next_key_hash` | string | hex, the key hash of key `nonce + 1`, the same bytes as in the signed payload |
+| `login_key_hash` | string | hex, on the first transaction only, the same bytes as in the signed payload |
+| `cosign_key_hash` | string | hex, on the first transaction only, the same bytes as in the signed payload |
 
 **`POST /api/wallet/send`**
 
@@ -151,8 +171,11 @@ All writes are `POST`, JSON in and JSON out, with an `X-API-Key` header. These f
 {"from": "rete...", "to": "rete...", "amount": "1500000000000000000",
  "nonce": 0, "sender_balance_claim": "25000000000000000000",
  "declared": ["rete...", "rete...", "rete_treasury"], "fee_currency": "RTM",
- "signature": "02...", "public_key": "..."}
+ "signature": "02...", "public_key": "...",
+ "next_key_hash": "<64 hex>", "login_key_hash": "<64 hex>", "cosign_key_hash": "<64 hex>"}
 ```
+
+The two hashes on the last line are sent on the account's first transaction only. Every later body carries `next_key_hash` alone.
 
 `amount` as a string is atomic units. Always send a string.
 
@@ -198,13 +221,13 @@ Success is `200` with a `tx_id`. An accepted transaction has *not* settled yet. 
 
 | Status | Meaning | Retry? |
 |---|---|---|
-| 400 | refused for its signature, nonce, balance or format | no |
+| 400 | refused for its signature, key, nonce, balance or format | no |
 | 401 | no API key | no |
 | 403 | unknown or revoked API key | no |
 | 404 | no such contract or transaction (yet) | for a fresh transaction, yes |
 | 413 | contract too large | no |
 | 429 | over your rate limit, see `Retry-After` | **yes**, later |
-| 503 | the node had no open block, was mid-handover or was busy | **yes**, same bytes |
+| 503 | the node had no open block, was mid-handover or was busy (`rpc busy, retry`) | **yes**, same bytes |
 
 ## 5. Gas
 
@@ -282,13 +305,13 @@ Imported from module `env`. Pointers are offsets into your memory and every leng
 | `get_contract_version` | `(id_ptr, id_len, out_ptr, out_max) -> i32` | the version a contract declares |
 | `set_contract_version` | `(ver_ptr, ver_len) -> i32` | `0` or `-1`, up to 64 bytes |
 | `supports_capability` | `(id_ptr, id_len, cap_ptr, cap_len) -> i32` | `1`, `0` or `-1`. A claim, not a guarantee. |
-| `request_random` | `(out_ptr, out_max) -> i32` | bytes of the request id (this transaction's id), `-1` refused. Costs 50,000 fuel. Next testnet release. |
+| `request_random` | `(out_ptr, out_max) -> i32` | bytes of the request id (this transaction's id), `-1` refused. Costs 50,000 fuel. |
 
 There is no clock, no randomness of your own, no network and no file access. `call_contract` and `call_contract_value` take arguments as a JSON array of strings, for example `["rete...","10"]`, and answer `-1` for anything else. The contract you call receives them in its own `args`. When the contract you call answers with an error reply, you get that reply, and its writes stay unless your call fails too.
 
 ### Random numbers
 
-`request_random` books a number for the transaction and writes the request id, which is the transaction id. After the transaction is final the chain calls `on_use` again with action `on_random`, caller `retium-vrf` and args `[request_id, number]`, `number` being 64 hex characters. That call has the ordinary fuel budget and costs the sender no gas. If it fails, the request is still closed. `request_random` answers `-1` in a free read, inside `on_random`, and when another contract in the same transaction already asked. The import exists from the next testnet release. A module that imports it cannot be instantiated before that.
+`request_random` books a number for the transaction and writes the request id, which is the transaction id. After the transaction is final the chain calls `on_use` again with action `on_random`, caller `retium-vrf` and args `[request_id, number]`, `number` being 64 hex characters. That call has the ordinary fuel budget and costs the sender no gas. If it fails, the request is still closed. `request_random` answers `-1` in a free read, inside `on_random`, and when another contract in the same transaction already asked. The import is live on the public testnet since node release 3.0.31.
 
 The number is `blake3("retium.vrf.number.v1" || request_id || secret)`, `secret` being the 32 bytes the keeper revealed for this request. `GET /api/vrf/request/{tx_id}` returns the keeper, the secret and the number. `blake3(secret)` is the lock the keeper held before this reveal. `GET /api/vrf/keeper/{id}` returns the lock it holds now, which is the last secret it revealed.
 

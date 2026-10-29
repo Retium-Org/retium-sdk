@@ -11,7 +11,7 @@ signed message = blake3(bincode(payload))
 
 payload = version | chain_id | action | sender | recipient | amount
         | nonce | sender_balance_claim | method | args_hash | declared
-        | fee_currency
+        | fee_currency | next_key_hash | login_key_hash | cosign_key_hash
 ```
 
 | Field | Why it is signed |
@@ -22,8 +22,23 @@ payload = version | chain_id | action | sender | recipient | amount
 | `args_hash` | The exact arguments of a contract call. |
 | `declared` | Which accounts this transaction may write to. |
 | `fee_currency` | Whether gas is paid in RTM or RTD, so a relay cannot change it. |
+| `next_key_hash` | The hash of the key you will sign your next transaction with. |
+| `login_key_hash`, `cosign_key_hash` | The hashes of your identity key and of your co-signing key, published once. |
 
-The public testnet uses chain id 3, the SDK default.
+The public testnet uses chain id 3 and payload version 6, the SDK defaults.
+
+## One key per transaction
+
+Every transaction is signed with a key of its own. Key 0 is the seed's own key, and its hash is your address. Key `i` is derived from the seed, and it signs the transaction with nonce `i`. The transaction carries the public key it was signed with and the hash of the next key. The chain keeps that hash and accepts only that key for your next transaction, so a key that has signed once is used up, and a public key seen on the chain is worthless to anyone who copies it.
+
+```rust
+let signing = key.key_at(nonce);                         // the key for this transaction
+let next = key_hash(&key.key_at(nonce + 1).public_key()); // what the chain expects after it
+```
+
+Two more keys come from the same seed. The **identity key** (`key.identity_key()`) signs site logins and messages and can never move money. The **co-signing key** (`key.cosign_key(counter)`) is used only when your wallet is a member of a 2FA or multisig vault. Your first transaction publishes the hashes of both, and later transactions send zeros to leave them as they are.
+
+Before signing, read `GET /api/wallet/{address}`. Its `next_key_hash` is the key the chain expects, and `nonce` is its index. A wallet that has never sent anything has no `next_key_hash`, and key 0 signs. `tx::*` does all of this and refuses to sign when the seed does not produce the key the chain expects.
 
 **The balance claim** is your confirmed balance when you signed. A keeper refuses the transaction if its own view of your balance is below the claim, so the result does not depend on when other transactions arrive. The SDK fills it in from the node. If you build the payload yourself, send the balance the node reported.
 
@@ -54,12 +69,21 @@ let payload = CanonicalPayload::transfer(
     wallet.balance_atomic()?,
 );
 
-let signature = key.sign_hex(&payload.signing_hash());
+use retium_sdk::key::key_hash;
+
+let next = key_hash(&key.key_at(wallet.nonce + 1).public_key());
+let login = wallet.login_key_hash.is_none().then(|| key_hash(&key.identity_key().public_key()));
+let cosign = wallet.cosign.is_none().then(|| key_hash(&key.cosign_key(0).public_key()));
+let payload = payload.with_key_hashes(next, login, cosign);
+
+let signing = key.key_at(wallet.nonce);
+let signature = signing.sign_hex(&payload.signing_hash());
+let public_key = signing.public_key().to_hex();
 ```
 
-Then post it with `nonce`, `sender_balance_claim`, `declared`, `fee_currency`, `signature` and `public_key`. The helpers in [`tx`](../crates/retium-sdk/src/tx.rs) do exactly this and are the better starting point. The [Wire reference](08-wire-reference.md) lists every field.
+Then post it with `nonce`, `sender_balance_claim`, `declared`, `fee_currency`, `signature`, `public_key`, `next_key_hash` and, on the first transaction, `login_key_hash` and `cosign_key_hash`, all hashes as hex. The helpers in [`tx`](../crates/retium-sdk/src/tx.rs) do exactly this and are the better starting point. The [Wire reference](08-wire-reference.md) lists every field.
 
-Include your public key at least on your account's first transaction, after which the chain remembers it. Sending it every time is harmless and simpler.
+`public_key` is the key of this transaction, so it is different every time and always required.
 
 ## Call arguments
 
@@ -73,9 +97,9 @@ The nonce is your account's sequence number. Ask the node for the next one. Do n
 let nonce = client.next_nonce(&address).await?;
 ```
 
-If a transaction is refused for its nonce, something else spent from the account in between. Fetch the nonce again and rebuild. Never reuse a nonce for different content.
+If a transaction is refused for its nonce, something else spent from the account in between. Fetch the nonce again and rebuild with the key of the new nonce. Never reuse a nonce for different content.
 
-Parallel sends from one account are a trap. Two transactions with the same nonce mean one of them dies. Send from one place, in order, or use separate accounts.
+Parallel sends from one account are a trap. Two transactions with the same nonce mean one of them dies, and the node refuses the second one it sees with `Nonce N is already in flight`. Send from one place, in order, or use separate accounts.
 
 ## Gas
 
@@ -100,6 +124,8 @@ Keep a little spare. A call the contract refuses still costs its fee.
 | `Rejected` | It will never execute. |
 | `Voided` | It will never execute, because another transaction used its nonce. The SDK reports it as `Rejected`. |
 
+A transaction is settled on its own, not with its block. On the public testnet `HardFinal` normally arrives within a second, and a deploy or a call runs at once, so its result is there by the time it is final.
+
 A deploy or a call has a second answer, its result. The transaction can be `HardFinal` while the contract refused it. In that case nothing it did is kept, any RTM attached is returned, and the gas is still paid.
 
 ```rust
@@ -119,7 +145,7 @@ match (status.finality, status.outcome) {
 
 | Error | Retry? | What it means |
 |---|---|---|
-| `Busy` | **yes** | The node had no open block, was mid-handover or was over its rate limit. The same bytes may go through in a moment. |
+| `Busy` | **yes** | The node had no open block, was mid-handover, was over its rate limit, or answered `rpc busy, retry` under load. The same bytes may go through in a moment. |
 | `Transport` | **yes** | The request never got an answer. |
 | `Refused` | no | The node looked at it and said no. Fix the transaction. |
 | `Invalid`, `InvalidAddress`, `InvalidAmount` | no | Caught on your machine, nothing was sent. |

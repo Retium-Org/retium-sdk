@@ -103,7 +103,8 @@ The signature covers the exact argument text. An array is joined as `args.map(St
 
 * The `nonce` must come from your backend, used once, 16 to 64 letters and digits. A nonce made in the browser makes the login replayable.
 * Send `message` to your backend exactly as you received it. Parsing and re-serialising it breaks the signature.
-* The backend must check the signature against `publicKey`, derive the address from `publicKey` itself (see [Wire reference](08-wire-reference.md#2-accounts)), and check the domain and nonce in the message.
+* The wallet signs with its identity key, not with a transaction key. The backend must check the signature against `publicKey`, then read `GET https://rpc.retium.org/api/wallet/{address}` and check that `blake3(publicKey)` equals its `login_key_hash`. A wallet that has never sent a transaction has no `login_key_hash` yet, and then `publicKey` must derive `address` itself (see [Wire reference](08-wire-reference.md#2-accounts)). Then check the domain and nonce in the message.
+* Never accept a login because `publicKey` derives the address alone once `login_key_hash` is published. A transaction key seen on the chain is public, and the identity key is the one that proves the user.
 
 ### Deploying
 

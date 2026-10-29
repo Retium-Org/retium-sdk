@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/retium-sdk", "crates/retium-contract", "examples/hello_counter"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.85"
 license = "Apache-2.0"
@@ -12,7 +12,7 @@ homepage = "https://retium.org"
 authors = ["Retium"]
 
 [workspace.dependencies]
-retium-contract = { version = "0.1.0", path = "crates/retium-contract" }
+retium-contract = { version = "0.2.0", path = "crates/retium-contract" }
 
 # Contracts are hashed as deployed, so builds must be small and deterministic.
 [profile.release]

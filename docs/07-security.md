@@ -6,6 +6,7 @@ What the chain protects you from, what it does not, and the habits that keep you
 
 * Signing happens on your machine. No key, seed or key file path ever leaves it.
 * Back up the 32-byte seed offline. It **is** the account. Lose it and nothing can recover it.
+* Every transaction is signed with a key derived from the seed for that one transaction, and the chain accepts each key once. A public key seen on the chain cannot sign anything else. The identity key, also derived from the seed, signs logins and messages and can never move money. None of this needs anything from you beyond keeping the seed.
 * Keep key files outside your project folder. If one must live inside it, make sure `.gitignore` covers `*.sk`, and check your git history rather than assuming.
 * Pass API keys through the environment, not as command-line arguments. Arguments are visible to every process on the machine and land in shell history.
 * An API key raises your rate limit and grants no authority over any account. Still, keep it private, because someone else's traffic on it uses your quota. Revoke a leaked key with `retium api-key revoke`.
@@ -18,6 +19,7 @@ What the chain protects you from, what it does not, and the habits that keep you
 * **Code does not change.** A contract id is bound to exact bytes, so nobody can swap the code under your users.
 * **A refusal undoes the call.** When a contract refuses a user's call or traps, every write, event and transfer it made is discarded and attached RTM goes back to the sender.
 * **Replay is impossible across networks and positions.** The chain id and nonce are signed.
+* **A used key is dead.** Each transaction names the hash of the next key, and the chain accepts only that key next time.
 
 ## What the chain does not guarantee
 

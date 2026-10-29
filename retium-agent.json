@@ -6,6 +6,9 @@
   "rpc": "https://rpc.retium.org",
   "chain_id_in_signatures": 3,
   "signature_scheme": "ML-DSA-44 (FIPS 204)",
+  "payload_version": 6,
+  "one_key_per_transaction": "key i of the seed signs the transaction with nonce i; every transaction carries next_key_hash; the SDK derives the keys",
+  "node_release": "3.0.31",
   "signer": "retium command-line tool from the Retium SDK, signs locally",
   "address": {
     "prefix": "rete",
@@ -24,6 +27,7 @@
   "deploy_weight": 5,
   "finality_states": ["Pending", "SoftFinal", "HardFinal", "Rejected", "Voided"],
   "settled_state": "HardFinal",
+  "settled_after_seconds_typical": 1,
   "api_key": {
     "needed_for": "every POST",
     "header": "X-API-Key",

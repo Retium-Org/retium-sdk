@@ -217,7 +217,7 @@ The callback is a call of its own. It runs after your transaction, with the ordi
 
 A keeper reveals a secret, one per request, after the transaction is final. The number is derived from that secret and the request id. `GET /api/vrf/request/{tx_id}` returns the reveal, and the [wire reference](08-wire-reference.md#random-numbers) gives the check. The keeper that reveals sees the number before everyone else and can only refuse to reveal, which is visible on chain.
 
-Native random numbers arrive on the public testnet with the next release. Before that, a contract that uses them is refused at deploy, because the import does not exist.
+Random numbers are live on the public testnet since node release 3.0.31 (October 2026).
 
 ## Testing before you deploy
 

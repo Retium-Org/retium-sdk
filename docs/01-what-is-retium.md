@@ -18,6 +18,8 @@ retium_sdk::address::is_valid(&input)
 
 Signatures are ML-DSA-44 (FIPS 204), a post-quantum scheme. A key file is 37 bytes, made of a header, a version byte and a 32-byte seed. **The seed is the account.** Back it up and everything else can be rebuilt. The same 64-character seed works in the SDK and in the Retium wallet at [wallet.retium.org](https://wallet.retium.org).
 
+Every transaction is signed with its own key. Key 0 is the seed's own key and gives the address, and key `i` is derived from the seed for the transaction with nonce `i`. Each transaction announces the hash of the next key, and the chain accepts only that key next time, so a key that has signed once is used up. A second derived key, the identity key, signs site logins and never moves money. The SDK does all of this from the one seed, so you only ever handle the seed. See [Transactions](05-transactions.md).
+
 `rete_treasury`, `rete_burn` and `rete_safehouse` look like addresses but are not. They are ledger accounts the chain uses for gas, burns and the reserve, and they can never be a sender.
 
 ## Money
@@ -61,6 +63,8 @@ A transaction moves through these states.
 | `HardFinal` | It is settled. This is the one to wait for. |
 | `Rejected` | It will never execute. |
 | `Voided` | It will never execute, because another transaction used its nonce. The SDK reports it as `Rejected`. |
+
+A transaction is settled on its own, not with its block. On the public testnet `HardFinal` normally arrives within a second of sending, and a deploy or a call runs at once, so its result is on the transaction by the time it is final.
 
 ```rust
 let status = client.wait_for_result(&tx_id, Duration::from_secs(120)).await?;
